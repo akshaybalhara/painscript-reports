@@ -1,0 +1,8 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+user-management-service,com.painscript.usermanagement.controller,ExceptionControllerAdvice,0,50,0,2,0,11,0,3,0,2
+user-management-service,com.painscript.usermanagement.controller,UserManagementController,26,1005,6,8,6,144,6,25,0,24
+user-management-service,com.painscript.usermanagement.controller,HealthController,0,20,0,0,0,6,0,3,0,3
+user-management-service,com.painscript.usermanagement.serviceimpl,UserManagementServiceImpl,934,2797,213,193,143,603,180,90,4,63
+user-management-service,com.painscript.usermanagement.service,UserManagementService,0,20,0,0,0,4,0,1,0,1
+user-management-service,com.painscript.usermanagement.exception,PainscriptBusinessException,4,10,0,0,2,4,1,2,1,2
+user-management-service,com.painscript.usermanagement.repositoryimpl,UserManagementRepositoryImpl,67,372,18,22,8,76,18,9,0,7

@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserManagementService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">user-management-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.usermanagement.service</a> &gt; <span class="el_source">UserManagementService.java</span></div><h1>UserManagementService.java</h1><pre class="source lang-java linenums">package com.painscript.usermanagement.service;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
+
+import com.painscript.usermanagement.dto.ChangePasswordDTO;
+import com.painscript.usermanagement.dto.LicenseReportDTO;
+import com.painscript.usermanagement.dto.RegisterSiteDTO;
+import com.painscript.usermanagement.dto.SiteDTO;
+import com.painscript.usermanagement.dto.UserDTO;
+
+/**
+ * UserManagementService holds all back end operations which are required
+ * for User Management microservice. 
+ * 
+ * @author Prolifics
+ *
+ */
+public interface UserManagementService {
+	
+	/**
+	 * getUserProfile retrieves user profile information
+	 * 
+	 * @param userId
+	 * &lt;p&gt; userId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; User profile information.&lt;/p&gt;
+	 */
+	public UserDTO getUserProfile(Integer userId);
+	
+	/**
+	 * createUser method is used to create a new user.
+	 * 
+	 * @param userRequest
+	 * 	&lt;p&gt;User data to create new user.&lt;/p&gt;
+	 * @param role
+	 * 	&lt;p&gt;Role of the user.&lt;/p&gt;
+	 * @return 
+	 */
+	public Integer createUser(UserDTO userRequest, String role);
+	
+	static String generateDefaultPassword() {
+<span class="fc" id="L44">		Random rand = new Random();</span>
+<span class="fc" id="L45">		String defaultPassword = String.format(&quot;%04d&quot;, rand.nextInt(10000));</span>
+<span class="fc" id="L46">		defaultPassword = &quot;1111&quot;; //TODO: To be removed later</span>
+<span class="fc" id="L47">		return defaultPassword;</span>
+	}
+	
+	/**
+	 * getPhysiciansOfPatient retrieves list of physician particular patient 
+	 * 
+	 * @param patientId
+	 * &lt;p&gt; patientId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; list of physician.&lt;/p&gt;
+	 */
+
+	public List&lt;UserDTO&gt; getPhysiciansOfPatient(Integer patientId);
+	
+	/**
+	 * getPhysicians retrieves list of physician or physician assistant based on role 
+	 * 
+	 * @param siltetId,role
+	 * &lt;p&gt; siteId to be queried in database.&lt;/p&gt;
+	 * &lt;p&gt;role to filter physician and physician assistant
+	 * @return
+	 * &lt;p&gt; list of user based on role in site.&lt;/p&gt;
+	 */
+
+	public List&lt;UserDTO&gt; getPhysicians(Integer siteId, String role);
+	
+	/**
+	 * getPatientDetails retrieves list of patient belongs to particular physician 
+	 * 
+	 * @param physicianId
+	 * &lt;p&gt; physicianId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; list of patient.&lt;/p&gt;
+	 */
+	
+	public List&lt;UserDTO&gt; getPatientDetails(Integer physicianId);
+
+	/**
+	 * getAdminDashboardData retrieves dashboard data
+	 * 
+	 * @param adminId
+	 * &lt;p&gt; adminId to be queried in database.&lt;/p&gt;
+	 * @param stateCode
+	 * &lt;p&gt;admin state code&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt;dashboard data object.&lt;/p&gt;
+	 */
+	public Object getAdminDashboardData(Integer adminId, String stateCode);
+	
+	/**
+	 * getSiteAdminDashboardData retrieves dashboard data
+	 * 
+	 * @param siteAdminId
+	 * &lt;p&gt; siteAdminId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt;dashboard data object.&lt;/p&gt;
+	 */
+	public Object getSiteAdminDashboardData(Integer siteAdminId);
+	
+	/**
+	 * getPhysicianDashboardData retrieves dashboard data
+	 * 
+	 * @param physicianId
+	 * &lt;p&gt; adminId to be queried in database.&lt;/p&gt;
+	 * @param siteId
+	 * &lt;p&gt; siteId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt;dashboard data object.&lt;/p&gt;
+	 */
+	public Object getPhysicianDashboardData(Integer physicianId, Integer siteId);
+
+	/**
+	 * getUserProfilePhoto retrieves profile photo
+	 * @param userId
+	 * &lt;p&gt; unique user id&lt;/p&gt;
+	 * @return profilephoto
+	 */
+	public String getUserProfilePhoto(Integer userId);
+
+	/**
+	 * getSiteData retrieves site data
+	 * @return object of site data
+	 */
+	public Object getSitesData();
+
+	/**
+	 * getPatients retrieves patient data using site id 
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @return list of patient
+	 */
+	public List&lt;UserDTO&gt; getPatients(Integer siteId);
+
+	/**
+	 * registerSite is used to register a site
+	 * @param registerSiteDTO
+	 * @return
+	 * &lt;p&gt;site unique id&lt;/p&gt;
+	 */
+	public Integer registerSite(RegisterSiteDTO registerSiteDTO);
+
+	/**
+	 * changePassword is used to change the old password
+	 * @param changePasswordRequest
+	 * &lt;p&gt; data transfer object for change password
+	 * @param updatedBy
+	 *&lt;p&gt;username of logged in user&lt;/p&gt;
+	 */
+	public void changePassword(ChangePasswordDTO changePasswordRequest, String updatedBy);
+
+	/**
+	 * resetpassword is used to reset the password of the user
+	 * @param userId
+	 * &lt;p&gt; unique user id&lt;/p&gt;
+	 * @param updatedBy
+	 * &lt;p&gt; username of logged in user&lt;/p&gt;
+	 */
+	public void resetPassword(Integer userId, String updatedBy);
+
+	/**
+	 * updateSiteInfo will update the site information
+	 * @param siteDTO
+	 * &lt;p&gt;data transfer object of site&lt;/p&gt;
+	 */
+	public void updateSiteInfo(SiteDTO siteDTO);
+
+	/**
+	 * updateUserProfile will update the profile of user 
+	 * @param userId
+	 * &lt;p&gt;unique user id
+	 * @param userRequest
+	 * &lt;p&gt;data transfer object of user&lt;/p&gt;
+	 */
+	public void updateUserProfile(Integer userId, UserDTO userRequest);
+
+	/**
+	 * addLicenseToSite will allot the license to a site 
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @param licenseQty
+	 * &lt;p&gt;license Quantity &lt;/p&gt;
+	 * @param createdBy
+	 * &lt;p&gt;username of logged in user&lt;/p&gt;
+	 */
+	public void addLicensesToSite(Integer siteId, Integer licenseQty, String createdBy);
+
+	/**
+	 * disablePatientFromSite will disable a patient from its site
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @param patientId
+	 * &lt;p&gt;unique patient id&lt;/p&gt;
+	 * @param updatedBy
+	 * &lt;p&gt;username of logged in user&lt;/p&gt;
+	 */
+	public void disablePatientFromSite(Integer siteId, Integer patientId, String updatedBy);
+
+	/**
+	 * getSiteDetails will retrieves site detail
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @return site detail
+	 */
+	public SiteDTO getSiteDetails(Integer siteId);
+
+	
+	public List&lt;LicenseReportDTO&gt; getReport(Integer siteId,Date startDate, Date endDate);
+	
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

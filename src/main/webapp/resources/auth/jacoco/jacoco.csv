@@ -1,0 +1,7 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+auth-service,com.painscript.auth.repositoryimpl,AuthRepositoryImpl,9,72,0,0,3,20,0,3,0,3
+auth-service,com.painscript.auth.exception,PainscriptBusinessException,4,10,0,0,2,4,1,2,1,2
+auth-service,com.painscript.auth.controller,ExceptionControllerAdvice,4,67,1,5,2,16,2,4,1,2
+auth-service,com.painscript.auth.controller,HealthController,0,20,0,0,0,6,0,3,0,3
+auth-service,com.painscript.auth.controller,AuthController,109,460,19,25,21,86,16,13,1,6
+auth-service,com.painscript.auth.serviceimpl,AuthServiceImpl,80,300,5,7,13,69,5,14,0,13

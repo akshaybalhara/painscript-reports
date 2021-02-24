@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.auth.serviceimpl</a> &gt; <span class="el_source">AuthServiceImpl.java</span></div><h1>AuthServiceImpl.java</h1><pre class="source lang-java linenums">package com.painscript.auth.serviceimpl;
+
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.sql.Timestamp;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.apache.tomcat.util.codec.binary.Base64;
+import org.bouncycastle.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.painscript.auth.constants.AuthConstants;
+import com.painscript.auth.dto.EmailDTO;
+import com.painscript.auth.dto.ForgotPasswordDTO;
+import com.painscript.auth.exception.PainscriptBusinessException;
+import com.painscript.auth.model.Site;
+import com.painscript.auth.model.SitePatient;
+import com.painscript.auth.model.SiteUser;
+import com.painscript.auth.model.User;
+import com.painscript.auth.proxies.UtilProxy;
+import com.painscript.auth.repository.AuthRepository;
+import com.painscript.auth.repository.SitePatientRepository;
+import com.painscript.auth.repository.SiteRepository;
+import com.painscript.auth.repository.SiteUserRepository;
+import com.painscript.auth.repository.UserRepository;
+import com.painscript.auth.service.AuthService;
+
+/**
+ * AuthServiceImpl : Implementation Class of AuthService
+ * 
+ * @author Prolifics.
+ *
+ */
+@Service
+<span class="fc" id="L50">public class AuthServiceImpl implements AuthService, AuthConstants{</span>
+	
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L55">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+
+	/**
+	 * authRepository will be injected by the Spring Framework.
+	 */
+	@Autowired
+	private AuthRepository authRepository;
+	
+	@Autowired
+	private SiteUserRepository siteUserRepository;
+	
+	@Autowired
+	private SitePatientRepository sitePatientRepository;
+	
+	@Autowired
+	private SiteRepository siteRepository;
+	
+	@Autowired
+	private UserRepository userRepository;
+
+	@Value(&quot;${forgotpass.token.key}&quot;)
+	private String key;
+
+	/**
+	 * The UtilProxy to call utility methods using open-feign client.
+	 * UtilProxy Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private UtilProxy utilProxy;
+	
+	/**
+	 * getUserDetailsByUsername retrieves the details of
+	 * a User corresponding to a specified userName.
+	 *  
+	 * @param userName
+	 * 	&lt;p&gt;The userName of User whose details needs to be fetched.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The details encapsulated in the User instance.&lt;/p&gt;
+	 */	
+	@Override
+	public User getUserDetailsByUsername(String userName) {
+<span class="fc" id="L96">		return authRepository.getUserDetailsByUsername(userName);</span>
+	}
+
+	/**
+	 * updateLastLoggedInTime updates user last logged in time
+	 * on every successful login.
+	 *  
+	 * @param id
+	 * 	&lt;p&gt;User id to be updated.&lt;/p&gt;
+	 * @param lastLoggedInTime
+	 * 	&lt;p&gt;Timestamp of login time.&lt;/p&gt;
+	 */
+	@Override
+	public void updateLastLoggedInTime(int id, Timestamp lastLoggedInTime) {
+<span class="fc" id="L110">		authRepository.updateLastLoggedInTime(id,lastLoggedInTime);</span>
+		
+<span class="fc" id="L112">	}</span>
+	/**
+	 * getSiteDetails retrieves the details of
+	 * a Site corresponding to a specified userId.
+	 *  
+	 * @param userId
+	 * 	&lt;p&gt;The Site of siteUser whose details needs to be fetched.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The details encapsulated in the SiteUser instance.&lt;/p&gt;
+	 */	
+
+	@Override
+	public Site getSiteDetailsByUserId(int userId,String role) {
+<span class="fc" id="L125">		User user = new User();</span>
+<span class="fc" id="L126">		user.setId(userId);</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">		if(role.equals(PATIENTS)) {</span>
+<span class="fc" id="L128">			SitePatient sitePatient = sitePatientRepository.findByPatient(user).get(0);</span>
+<span class="fc" id="L129">			return sitePatient.getSite();</span>
+		}else {
+<span class="fc" id="L131">			SiteUser siteUser = siteUserRepository.findByUser(user);</span>
+<span class="fc" id="L132">			return siteUser.getSite();</span>
+		}
+	}
+
+	/**
+	 * findByUser retrieves the details of
+	 * a Site corresponding to a admin of a site
+	 *  
+	 * @param userId
+	 * 	&lt;p&gt;The site of Site whose details needs to be fetched.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The details encapsulated in the Site instance.&lt;/p&gt;
+	 */
+	@Override
+	public Site getSiteDetailsBySiteAdmin(int userId) {
+<span class="fc" id="L147">		User user = new User();</span>
+<span class="fc" id="L148">		user.setId(userId);</span>
+<span class="fc" id="L149">		return siteRepository.findByUser(user);</span>
+	}
+
+	@Override
+	public void forgotPassword(String username,String url) {
+<span class="fc" id="L154">		User user = userRepository.findByUsername(username);</span>
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">		if(user!=null){</span>
+<span class="fc" id="L156">			Integer userId = user.getId();</span>
+<span class="fc" id="L157">			String email = user.getEmail();</span>
+<span class="fc" id="L158">			email = &quot;akshay.balhara@prolifics.com&quot;; //TODO: need to remove later</span>
+<span class="fc" id="L159">			String token = null;</span>
+<span class="fc" id="L160">			token = getEncryptedText(userId+&quot;;&quot;+username);</span>
+<span class="fc" id="L161">			String forgotPasswordUrl = url+&quot;?token=&quot;+token;</span>
+<span class="fc" id="L162">			notifyUserByEmail(email, forgotPasswordUrl);</span>
+		}
+<span class="fc" id="L164">	}</span>
+
+	private void notifyUserByEmail(String emailTo, String message) {
+<span class="fc" id="L167">		EmailDTO email = new EmailDTO();</span>
+<span class="fc" id="L168">		email.setEmailAddress(emailTo);</span>
+<span class="fc" id="L169">		email.setSubject(&quot;Forgot Password&quot;);</span>
+<span class="fc" id="L170">		email.setTemplate(&quot;forgot-password&quot;);</span>
+<span class="fc" id="L171">		Map&lt;String,Object&gt; templateInputs = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L172">		templateInputs.put(&quot;forgotPasswordUrl&quot;, message);</span>
+<span class="fc" id="L173">		email.setTemplateInputs(templateInputs);</span>
+<span class="fc" id="L174">		sendEmailUsingTemplate(email);</span>
+<span class="fc" id="L175">	}</span>
+
+	private void sendEmailUsingTemplate(EmailDTO email) {
+<span class="fc" id="L178">		utilProxy.sendEmailUsingTemplate(email);</span>
+<span class="fc" id="L179">	}</span>
+
+	public String getEncryptedText(String plainText){
+<span class="fc" id="L182">		Key aesKey = new SecretKeySpec(Arrays.copyOf(key.getBytes(),16), &quot;AES&quot;);</span>
+		try {
+<span class="fc" id="L184">			Cipher cipher = Cipher.getInstance(&quot;AES&quot;);</span>
+<span class="fc" id="L185">			cipher.init(Cipher.ENCRYPT_MODE, aesKey);</span>
+<span class="fc" id="L186">			byte[] encrypted = cipher.doFinal((plainText).getBytes(&quot;UTF-8&quot;));</span>
+<span class="fc" id="L187">			return new String(new Base64().encode(encrypted));</span>
+<span class="nc" id="L188">		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException</span>
+				| BadPaddingException | UnsupportedEncodingException e) {
+<span class="nc" id="L190">			logger.error(&quot;Error occured while encoding: &quot;+e.getMessage());</span>
+<span class="nc" id="L191">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+		}
+	}
+
+	public String[] getDecryptedText(String encoded) {
+<span class="fc" id="L196">		Key aesKey = new SecretKeySpec(Arrays.copyOf(key.getBytes(),16), &quot;AES&quot;);</span>
+		try {
+<span class="fc" id="L198">			Cipher cipher = Cipher.getInstance(&quot;AES&quot;);</span>
+<span class="fc" id="L199">			cipher.init(Cipher.DECRYPT_MODE, aesKey);</span>
+<span class="fc" id="L200">			String decrypted = new String(cipher.doFinal(new Base64().decode(encoded.getBytes(&quot;UTF-8&quot;))));</span>
+<span class="fc" id="L201">			String[] userInfo = decrypted.split(&quot;;&quot;,2);</span>
+<span class="fc" id="L202">			return userInfo;</span>
+<span class="nc" id="L203">		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException</span>
+				| BadPaddingException | UnsupportedEncodingException e) {
+<span class="nc" id="L205">			logger.error(&quot;Error occured while decoding: &quot;+e.getMessage());</span>
+<span class="nc" id="L206">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+		}
+		
+	}
+
+	@Override
+	public Integer verifyToken(String token) {
+<span class="fc" id="L213">		String[] userInfo = getDecryptedText(token);</span>
+<span class="fc" id="L214">		Integer userId = Integer.parseInt(userInfo[0]);</span>
+<span class="fc" id="L215">		User user = userRepository.findById(userId).orElse(null);</span>
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">		if(user!=null){</span>
+<span class="pc bpc" id="L217" title="1 of 2 branches missed.">			if(userInfo[1].equals(user.getUsername()))</span>
+<span class="fc" id="L218">				return userId;</span>
+			else
+<span class="nc" id="L220">				return null;</span>
+		}else
+<span class="nc" id="L222">			throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Invalid token recieved.&quot;);</span>
+
+	}
+
+	@Override
+	public void updatePassword(ForgotPasswordDTO forgotPasswordDTO, Integer userId) {
+<span class="fc" id="L228">		User user = userRepository.findById(userId).orElse(null);</span>
+<span class="pc bpc" id="L229" title="1 of 2 branches missed.">		if(user!=null){</span>
+<span class="pc bpc" id="L230" title="1 of 2 branches missed.">			if(forgotPasswordDTO.getNewPassword().equals(forgotPasswordDTO.getConfirmPassword())){</span>
+<span class="fc" id="L231">				user.setPassword(getEncryptedPassword(forgotPasswordDTO.getNewPassword()));</span>
+<span class="fc" id="L232">				user.setUpdatedBy(user.getUsername());</span>
+<span class="fc" id="L233">				user.setUpdatedDate(new Date());</span>
+<span class="fc" id="L234">				userRepository.save(user);</span>
+			}else {
+<span class="nc" id="L236">				logger.error(user.getUsername()+&quot; tried to reset password. Password didn't match.&quot;);</span>
+<span class="nc" id="L237">				throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Password didn't match.&quot;);</span>
+			}
+		}else
+<span class="nc" id="L240">			throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Invalid request.&quot;);</span>
+<span class="fc" id="L241">	}</span>
+
+	public String getEncryptedPassword(String plainText){
+<span class="fc" id="L244">		String encryptedText = null;		</span>
+		try {
+			// Getting encoder  
+<span class="fc" id="L247">			java.util.Base64.Encoder encoder = java.util.Base64.getEncoder();  </span>
+			// Create MessageDigest instance for MD5
+<span class="fc" id="L249">			MessageDigest md = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+			//Add password bytes to digest
+<span class="fc" id="L251">			md.update(plainText.getBytes());</span>
+			//Get the hash's bytes
+<span class="fc" id="L253">			byte[] bytes = md.digest();</span>
+
+			//Get complete hashed password in hex format
+<span class="fc" id="L256">			encryptedText = encoder.encodeToString(bytes); </span>
+		}
+<span class="nc" id="L258">		catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L259">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L260">		}		</span>
+
+<span class="fc" id="L262">		return encryptedText;</span>
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

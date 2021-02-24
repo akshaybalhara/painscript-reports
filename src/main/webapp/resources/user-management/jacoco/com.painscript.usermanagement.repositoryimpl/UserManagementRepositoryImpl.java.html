@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserManagementRepositoryImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">user-management-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.usermanagement.repositoryimpl</a> &gt; <span class="el_source">UserManagementRepositoryImpl.java</span></div><h1>UserManagementRepositoryImpl.java</h1><pre class="source lang-java linenums">package com.painscript.usermanagement.repositoryimpl;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.ParameterMode;
+import javax.persistence.PersistenceUnit;
+import javax.persistence.StoredProcedureQuery;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Repository;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.painscript.usermanagement.constants.UserManagementConstants;
+import com.painscript.usermanagement.dto.SPResultDTO;
+import com.painscript.usermanagement.exception.PainscriptBusinessException;
+import com.painscript.usermanagement.model.Site;
+import com.painscript.usermanagement.model.User;
+import com.painscript.usermanagement.repository.UserManagementRepository;
+
+/**
+ * UserManagementRepositoryImpl : Implementation class of UserManagementRepository.
+ * 
+ * @author Prolifics
+ *
+ */
+@Repository
+<span class="fc" id="L32">public class UserManagementRepositoryImpl implements UserManagementRepository, UserManagementConstants{</span>
+
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L37">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+	
+	/**
+	 * EntityManager instance is injected by Spring Framework.
+	 * 
+	 * This is used to manage all the Persistent entities
+	 * defined in the System.
+	 */
+
+	@PersistenceUnit
+	private EntityManagerFactory entityManagerFactory;
+
+	/**
+	 * checkEmailExistance method check existance of email with particular role and site
+	 * 
+	 * @param siteId 
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @param role
+	 * &lt;p&gt;unique role id&lt;/p&gt;
+	 * @return boolean 
+	 */
+	@Override
+	public boolean checkEmailExistance(String email, String role, int siteId) {
+<span class="fc" id="L60">		boolean flag = true;</span>
+<span class="fc" id="L61">		Site site = new Site();</span>
+<span class="fc" id="L62">		site.setId(siteId);</span>
+<span class="fc" id="L63">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L64">		List&lt;User&gt; sitePhysicians = entityManager.createNamedQuery(&quot;getSitePhysicians&quot;,User.class).setParameter(&quot;site&quot;, site).setParameter(&quot;status&quot;, ACTIVE).getResultList();</span>
+<span class="pc bpc" id="L65" title="2 of 4 branches missed.">		if(sitePhysicians!=null &amp;&amp; sitePhysicians.size() &gt; 0) {</span>
+<span class="fc" id="L66">			logger.debug(&quot;Size: &quot;+sitePhysicians.size());</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">			for(User physician : sitePhysicians){</span>
+<span class="pc bpc" id="L68" title="2 of 4 branches missed.">				if(physician.getRole().getRole().equals(role) &amp;&amp; physician.getEmail().equals(email)) {</span>
+<span class="nc" id="L69">					logger.error(&quot;Email already exist within same role: &quot;+role);</span>
+<span class="nc" id="L70">					throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Email already exist within same role: &quot;+role);		</span>
+				}else {
+<span class="fc" id="L72">					flag = false;</span>
+				}
+<span class="fc" id="L74">			}</span>
+		}
+<span class="fc" id="L76">		return flag;</span>
+	}
+	
+	
+	/**
+	 * checkPhoneExistance method check existance of phone number with particular role and site
+	 * 
+	 * @param siteId 
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @param role
+	 * &lt;p&gt;unique role id&lt;/p&gt;
+	 * @return boolean 
+	 */
+	@Override
+	public boolean checkPhoneExistance(String phone, String role, int siteId) {
+<span class="fc" id="L91">		boolean flag = true;</span>
+<span class="fc" id="L92">		Site site = new Site();</span>
+<span class="fc" id="L93">		site.setId(siteId);</span>
+<span class="fc" id="L94">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L95">		List&lt;User&gt; sitePhysicians = entityManager.createNamedQuery(&quot;getSitePhysicians&quot;,User.class).setParameter(&quot;site&quot;, site).setParameter(&quot;status&quot;, ACTIVE).getResultList();</span>
+<span class="pc bpc" id="L96" title="2 of 4 branches missed.">		if(sitePhysicians!=null &amp;&amp; sitePhysicians.size() &gt; 0) {</span>
+<span class="fc" id="L97">			logger.info(&quot;Size: &quot;+sitePhysicians.size());</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">			for(User physician : sitePhysicians){</span>
+<span class="pc bpc" id="L99" title="2 of 4 branches missed.">				if(physician.getRole().getRole().equals(role) &amp;&amp; physician.getPhone().equals(phone)) {</span>
+<span class="nc" id="L100">					logger.debug(&quot;Phone already exist within same role: &quot;+role);</span>
+<span class="nc" id="L101">					throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Phone already exist within same role: &quot;+role);		</span>
+				}else {
+<span class="fc" id="L103">					flag = false;</span>
+				}
+<span class="fc" id="L105">			}</span>
+		}
+<span class="fc" id="L107">		return flag;</span>
+	}
+
+	/**
+	 * getAdminDashboardData method returns dashboard admin data
+	 * 
+	 * @param adminId 
+	 * &lt;p&gt;unique admin id&lt;/p&gt;
+	 * @return dashboard data in Object 
+	 */
+	@Override
+	public Object getAdminDashboardData(Integer adminId, String stateCode) {
+<span class="fc" id="L119">		SPResultDTO jsonNode = new SPResultDTO();</span>
+<span class="fc" id="L120">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L121">		StoredProcedureQuery query = entityManager.createNamedStoredProcedureQuery(&quot;getAdminDashboardData&quot;)</span>
+<span class="fc" id="L122">				.registerStoredProcedureParameter(&quot;adminId&quot;, Integer.class, ParameterMode.IN).setParameter(&quot;adminId&quot;, adminId)</span>
+<span class="fc" id="L123">				.registerStoredProcedureParameter(&quot;regionId&quot;, String.class, ParameterMode.IN).setParameter(&quot;regionId&quot;, stateCode);</span>
+<span class="pc bpc" id="L124" title="2 of 4 branches missed.">		if(query.execute() &amp;&amp; query.getResultList().size() &gt; 0) {</span>
+<span class="fc" id="L125">			Map&lt;String,Object&gt; tempMap = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L126">			tempMap.put(&quot;result&quot;, query.getResultList().get(0));</span>
+<span class="fc" id="L127">			ObjectMapper objMapper = new ObjectMapper();</span>
+<span class="fc" id="L128">			jsonNode = objMapper.convertValue(tempMap, SPResultDTO.class);</span>
+		}
+<span class="fc" id="L130">		entityManager.clear();</span>
+<span class="fc" id="L131">		entityManager.close();</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">		if(jsonNode.getResult()!=null) {</span>
+<span class="fc" id="L133">			return jsonNode.getResult();</span>
+		}
+<span class="nc" id="L135">		return null;</span>
+	}
+	
+	/**
+	 * getSiteAdminDashboardData method returns dashboard site admin data
+	 * 
+	 * @param siteAdminId 
+	 * &lt;p&gt;unique site admin id&lt;/p&gt;
+	 * @return dashboard data in Object 
+	 */
+	@Override
+	public Object getSiteAdminDashboardData(Integer siteAdminId) {
+<span class="fc" id="L147">		SPResultDTO jsonNode = new SPResultDTO();</span>
+<span class="fc" id="L148">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L149">		StoredProcedureQuery query = entityManager.createNamedStoredProcedureQuery(&quot;getSiteAdminDashboardData&quot;)</span>
+<span class="fc" id="L150">				.registerStoredProcedureParameter(&quot;siteAdminId&quot;, Integer.class, ParameterMode.IN).setParameter(&quot;siteAdminId&quot;, siteAdminId);</span>
+<span class="pc bpc" id="L151" title="2 of 4 branches missed.">		if(query.execute() &amp;&amp; query.getResultList().size() &gt; 0) {</span>
+<span class="fc" id="L152">			Map&lt;String,Object&gt; tempMap = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L153">			tempMap.put(&quot;result&quot;, query.getResultList().get(0));</span>
+<span class="fc" id="L154">			ObjectMapper objMapper = new ObjectMapper();</span>
+<span class="fc" id="L155">			jsonNode = objMapper.convertValue(tempMap, SPResultDTO.class);</span>
+		}
+<span class="fc" id="L157">		entityManager.clear();</span>
+<span class="fc" id="L158">		entityManager.close();</span>
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">		if(jsonNode.getResult()!=null) {</span>
+<span class="fc" id="L160">			return jsonNode.getResult();</span>
+		}
+<span class="nc" id="L162">		return null;</span>
+	}
+	
+	/**
+	 * getPhysicianDashboardData method returns dashboard physician data
+	 * 
+	 * @param physicianId 
+	 * &lt;p&gt;unique physician id&lt;/p&gt;
+	 * @return dashboard data in Object 
+	 */
+	@Override
+	public Object getPhysicianDashboardData(Integer physicianId, Integer siteId) {
+<span class="fc" id="L174">		SPResultDTO jsonNode = new SPResultDTO();</span>
+<span class="fc" id="L175">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L176">		StoredProcedureQuery query = entityManager.createNamedStoredProcedureQuery(&quot;getPhysicianDashboardData&quot;)</span>
+<span class="fc" id="L177">				.registerStoredProcedureParameter(&quot;physicianId&quot;, Integer.class, ParameterMode.IN).setParameter(&quot;physicianId&quot;, physicianId)</span>
+<span class="fc" id="L178">				.registerStoredProcedureParameter(&quot;siteId&quot;, Integer.class, ParameterMode.IN).setParameter(&quot;siteId&quot;, siteId);</span>
+<span class="pc bpc" id="L179" title="2 of 4 branches missed.">		if(query.execute() &amp;&amp; query.getResultList().size() &gt; 0) {</span>
+<span class="fc" id="L180">			Map&lt;String,Object&gt; tempMap = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L181">			tempMap.put(&quot;result&quot;, query.getResultList().get(0));</span>
+<span class="fc" id="L182">			ObjectMapper objMapper = new ObjectMapper();</span>
+<span class="fc" id="L183">			jsonNode = objMapper.convertValue(tempMap, SPResultDTO.class);</span>
+		}
+<span class="fc" id="L185">		entityManager.clear();</span>
+<span class="fc" id="L186">		entityManager.close();</span>
+<span class="pc bpc" id="L187" title="1 of 2 branches missed.">		if(jsonNode.getResult()!=null) {</span>
+<span class="fc" id="L188">			return jsonNode.getResult();</span>
+		}
+<span class="nc" id="L190">		return null;</span>
+	}
+
+	/**
+	 * createLicense method create license for site
+	 * 
+	 * @param siteId 
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @param licenseQty
+	 * &lt;p&gt;quantity of license&lt;/p&gt;
+	 * @param createdBy
+	 * &lt;p&gt;username of logged in user&lt;/p&gt;
+	 */
+	@Override
+	public void createLicenses(Integer siteId, int licenseQty, String createdBy) {
+<span class="fc" id="L205">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L206">		StoredProcedureQuery query = entityManager.createNamedStoredProcedureQuery(&quot;createLicenses&quot;)</span>
+<span class="fc" id="L207">				.registerStoredProcedureParameter(&quot;site_id&quot;, Integer.class, ParameterMode.IN).setParameter(&quot;site_id&quot;, siteId)</span>
+<span class="fc" id="L208">				.registerStoredProcedureParameter(&quot;total_licenses&quot;, Integer.class, ParameterMode.IN).setParameter(&quot;total_licenses&quot;, licenseQty)</span>
+<span class="fc" id="L209">				.registerStoredProcedureParameter(&quot;created_by_name&quot;, String.class, ParameterMode.IN).setParameter(&quot;created_by_name&quot;, createdBy);</span>
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">		if(query.execute()) {</span>
+<span class="nc" id="L211">			logger.debug(licenseQty+&quot; Licenses created successfully for site id = &quot;+siteId);</span>
+		}
+<span class="fc" id="L213">		entityManager.clear();</span>
+<span class="fc" id="L214">		entityManager.close();		</span>
+<span class="fc" id="L215">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,512 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserManagementController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">user-management-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.usermanagement.controller</a> &gt; <span class="el_source">UserManagementController.java</span></div><h1>UserManagementController.java</h1><pre class="source lang-java linenums">package com.painscript.usermanagement.controller;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.painscript.usermanagement.constants.UserManagementConstants;
+import com.painscript.usermanagement.dto.AuditDTO;
+import com.painscript.usermanagement.dto.ChangePasswordDTO;
+import com.painscript.usermanagement.dto.LicenseReportDTO;
+import com.painscript.usermanagement.dto.RegisterSiteDTO;
+import com.painscript.usermanagement.dto.SiteDTO;
+import com.painscript.usermanagement.dto.StatusDTO;
+import com.painscript.usermanagement.dto.UserDTO;
+import com.painscript.usermanagement.dto.UserLookupDTO;
+import com.painscript.usermanagement.exception.PainscriptBusinessException;
+import com.painscript.usermanagement.proxies.AuditLogProxy;
+import com.painscript.usermanagement.service.UserManagementService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+/**
+ * UserManagementController is the core controller of UserManagement Micro Service
+ * which do have business API's to manage users.
+ * 
+ * @author Prolifics.
+ *
+ */
+@CrossOrigin(origins = &quot;*&quot;)
+@RestController
+@RequestMapping(&quot;/user-management&quot;)
+@Tag(name = &quot;UserManagement&quot;, description = &quot;User Management Service API&quot;)
+<span class="fc" id="L53">public class UserManagementController implements UserManagementConstants{</span>
+
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L58">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+
+	/**
+	 * The HttpServletRequest instance to get the incoming request headers.
+	 */
+	@Autowired
+	private HttpServletRequest httpServlet;
+
+	/**
+	 * The AuditLogProxy to log audit messages using open-feign client.
+	 * AuditLogProxy Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private AuditLogProxy auditProxy;
+
+	/**
+	 * UserManagementService Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private UserManagementService userManagementService;
+
+	/**
+	 * getProfile retrieves user profile information
+	 * 
+	 * @param userId
+	 * 	&lt;p&gt;unique user id&lt;/p&gt;
+	 * @return userDTO 
+	 */
+	@Operation(summary = &quot;Retrieves user profile information.&quot;, description = &quot;Retrieves user profile information.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/user-profile/{userId}&quot;, method=RequestMethod.GET)
+	public  @ResponseBody UserDTO getProfile(@PathVariable Integer userId){
+<span class="fc" id="L89">		logger.debug(&quot;User id:&quot;+userId);</span>
+<span class="fc" id="L90">		UserDTO userProfile = userManagementService.getUserProfile(userId);</span>
+<span class="fc" id="L91">		return 	userProfile;</span>
+	}
+
+	/**
+	 * onboardUser method is used to onboards a Physician, PA and Patients.
+	 * @param userRequest
+	 * 	&lt;p&gt;Data transfer object of user
+	 * @param role
+	 * 	&lt;p&gt; role of a user&lt;/p&gt;
+	 * @return status
+	 */
+	@Operation(summary = &quot;Onboards a user.&quot;, description = &quot;This operation onboards a Physician, PA and Patients.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value=&quot;/user/{role}&quot;, method = RequestMethod.POST)
+	public StatusDTO createUser(@RequestBody UserDTO userRequest, @PathVariable String role) {
+<span class="fc" id="L105">		logger.debug(&quot;Request: &quot;+userRequest);</span>
+<span class="fc" id="L106">		String userName = httpServlet.getHeader(&quot;userName&quot;);</span>
+<span class="fc" id="L107">		userRequest.setCreatedBy(userName);</span>
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">		if(userRequest.getPhysicianId()==null) {</span>
+<span class="fc" id="L109">			userRequest.setPhysicianId(Integer.parseInt(httpServlet.getHeader(&quot;userId&quot;)));</span>
+		}
+<span class="fc" id="L111">		Integer userId = userManagementService.createUser(userRequest,role);</span>
+<span class="fc" id="L112">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, role+&quot; created successfully.&quot;);</span>
+<span class="fc" id="L113">		String auditMessage = String.format(AM_USER_CREATED,userId, userRequest.getUsername(), role);</span>
+<span class="fc" id="L114">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_CREATE_USER);</span>
+<span class="fc" id="L115">		logger.debug(&quot;Audit request : &quot; + auditDTO);</span>
+<span class="fc" id="L116">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L117">		return status;</span>
+	}
+
+	/**
+	 * getAdminDashboardData retrieves data for admin's dashboard
+	 * @param adminId
+	 * 	&lt;p&gt; admin unique id&lt;/p&gt;
+	 * @param stateCode
+	 * &lt;p&gt;State code of admin &lt;/p&gt;
+	 * @return Object
+	 * &lt;p&gt;admin dashboard data&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves data for admin's dashboard.&quot;, description = &quot;Retrieves data for admin's dashboard.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/admin-dashboard/{adminId}/{stateCode}&quot;, method=RequestMethod.GET)
+	public @ResponseBody Object getAdminDashboardData( @PathVariable Integer adminId, @PathVariable String stateCode ){
+<span class="fc" id="L132">		logger.debug(&quot;Admin id:&quot;+adminId+&quot; statecode:&quot;+stateCode);</span>
+<span class="fc" id="L133">		return 	userManagementService.getAdminDashboardData(adminId,stateCode);</span>
+	}
+
+	/**
+	 * getSiteAdminDashboardData retrieves data for siteadmin's dashboard
+	 * @param siteAdmin
+	 * &lt;p&gt;unique site Admin id&lt;/p&gt;
+	 * @return Object
+	 * &lt;p&gt;site dashboard data&lt;/p&gt;
+	 * 
+	 */
+	@Operation(summary = &quot;Retrieves data for siteadmin's dashboard.&quot;, description = &quot;Retrieves data for siteadmin's dashboard.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/siteadmin-dashboard/{siteAdminId}&quot;, method=RequestMethod.GET)
+	public @ResponseBody Object getSiteAdminDashboardData( @PathVariable Integer siteAdminId ){
+<span class="fc" id="L147">		logger.debug(&quot;Site admin id: &quot;+siteAdminId);</span>
+<span class="fc" id="L148">		return 	userManagementService.getSiteAdminDashboardData(siteAdminId);</span>
+	}
+
+	/**
+	 * getPhysicianDashboardData retrieves data for physician's dashboard
+	 * @param physicianId
+	 * &lt;p&gt; unique physician id&lt;/p&gt;
+	 * @param siteId
+	 * &lt;p&gt; unique site Id /p&gt;
+	 * @return  Object
+	 * &lt;p&gt;physician dashboard data&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves data for physician's dashboard.&quot;, description = &quot;Retrieves data for physician's dashboard.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/physician-dashboard/{physicianId}/{siteId}&quot;, method=RequestMethod.GET)
+	public @ResponseBody Object getPhysicianDashboardData( @PathVariable Integer physicianId, @PathVariable Integer siteId ){
+<span class="fc" id="L163">		logger.debug(&quot;Physician id:&quot;+physicianId+&quot; site id:&quot;+siteId);</span>
+<span class="fc" id="L164">		return 	userManagementService.getPhysicianDashboardData(physicianId,siteId);</span>
+	}
+
+	/**
+	 * getSites retrieves list of sites 
+	 */
+	@Operation(summary = &quot;Retrieves list of sites.&quot;, description = &quot;Retrieves list of sites.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/sites&quot;, method=RequestMethod.GET)
+	public @ResponseBody Object getSites(){
+<span class="fc" id="L173">		Object sites = userManagementService.getSitesData();</span>
+<span class="fc" id="L174">		return 	sites;</span>
+	}
+
+	/**
+	 * changePassword used to change the old password.
+	 * 
+	 * @param changePasswordRequest
+	 * &lt;p&gt; Data transfer object of changepassword&lt;/p&gt;
+	 * @param userId
+	 * &lt;p&gt; unique user id&lt;/p&gt;
+	 * @return status
+	 */
+	@Operation(summary = &quot;Change user's profile password.&quot;, description = &quot;Change user's profile password.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/change-password/{userId}&quot;, method=RequestMethod.PUT)
+	public StatusDTO changePassword(@RequestBody ChangePasswordDTO changePasswordRequest,@PathVariable Integer userId) {
+<span class="fc" id="L189">		logger.debug(&quot;User id: &quot;+userId);</span>
+<span class="fc" id="L190">		String updatedBy = httpServlet.getHeader(&quot;userName&quot;);</span>
+<span class="fc" id="L191">		changePasswordRequest.setUserId(userId);</span>
+<span class="fc" id="L192">		userManagementService.changePassword(changePasswordRequest,updatedBy);</span>
+<span class="fc" id="L193">		String auditMessage = String.format(AM_PASSWORD_CHANGED,updatedBy); </span>
+<span class="fc" id="L194">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_CHANGE_PASSWORD);</span>
+<span class="fc" id="L195">		logger.debug(&quot;Audit request : &quot; + auditDTO);</span>
+<span class="fc" id="L196">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L197">		return new StatusDTO(&quot;SUC_000&quot;, &quot;Password changed successfully.&quot;);</span>
+	}
+
+	/**
+	 * resetPassword is for admin to forcefully reset the password.
+	 * @param userId
+	 * &lt;p&gt; unique user id&lt;/p&gt;
+	 * @return status
+	 */
+	@Operation(summary = &quot;Reset password of a user.&quot;, description = &quot;Only for admin to forcefully reset user's password.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/reset-password/{userId}&quot;, method=RequestMethod.PUT)
+	public StatusDTO resetPassword(@PathVariable Integer userId) {
+<span class="fc" id="L209">		logger.debug(&quot;User id: &quot;+userId);</span>
+<span class="fc" id="L210">		String updatedBy = httpServlet.getHeader(&quot;userName&quot;);</span>
+<span class="fc" id="L211">		userManagementService.resetPassword(userId,updatedBy);</span>
+<span class="fc" id="L212">		String auditMessage = String.format(AM_PASSWORD_RESET,userId); </span>
+<span class="fc" id="L213">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_PASSWORD_RESET);</span>
+<span class="fc" id="L214">		logger.debug(&quot;Audit request : &quot; + auditDTO);</span>
+<span class="fc" id="L215">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L216">		return new StatusDTO(&quot;SUC_000&quot;, &quot;Password reset successfully.&quot;);</span>
+	}
+
+	/**
+	 * registerSite onboards a site, its admin and assign some initial licenses.
+	 * 
+	 * @param registerSiteDTO
+	 * &lt;p&gt; Data Transfer object for registering a site
+	 * @return status
+	 */
+	@Operation(summary = &quot;It onboards a site, its admin and assign some initial licenses.&quot;, description = &quot;It onboards a site, its admin and assign some initial licenses.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/site&quot;, method=RequestMethod.POST)
+	public @ResponseBody StatusDTO registerSite(@RequestBody RegisterSiteDTO registerSiteDTO){
+<span class="fc" id="L229">		logger.debug(&quot;Request: &quot;+registerSiteDTO);</span>
+<span class="fc" id="L230">		String userName = httpServlet.getHeader(&quot;userName&quot;);</span>
+<span class="fc" id="L231">		registerSiteDTO.setCreatedBy(userName);</span>
+<span class="fc" id="L232">		Integer siteId = userManagementService.registerSite(registerSiteDTO);</span>
+<span class="fc" id="L233">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, &quot;Site created successfully.&quot;);</span>
+<span class="fc" id="L234">		String auditMessage = String.format(AM_REGISTER_SITE,siteId,registerSiteDTO.getSiteAdminDetails().getUsername(),registerSiteDTO.getLicenseQty()); </span>
+<span class="fc" id="L235">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_REGISTER_SITE);</span>
+<span class="fc" id="L236">		logger.debug(&quot;Audit request : &quot; + auditDTO);</span>
+<span class="fc" id="L237">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L238">		return 	status;</span>
+	}
+
+	/**
+	 * getProfilePhoto retrieves user profile image as base64 string
+	 * 
+	 * @param userId
+	 * &lt;p&gt;unique user id&lt;/p&gt;
+	 * @return profilePhoto
+	 */
+	@Operation(summary = &quot;Retrives user profile image.&quot;, description = &quot;Retrives user profile image.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/profile-photo/{userId}&quot;, method=RequestMethod.GET)
+	public Map&lt;String,String&gt; getProfilePhoto(@PathVariable Integer userId){
+<span class="fc" id="L251">		logger.info(&quot;User id:&quot;+userId);</span>
+<span class="fc" id="L252">		String photo = userManagementService.getUserProfilePhoto(userId);</span>
+<span class="fc" id="L253">		Map&lt;String,String&gt; profilePhoto = new HashMap&lt;String, String&gt;();</span>
+<span class="fc" id="L254">		profilePhoto.put(&quot;photoThumbnail&quot;, photo);</span>
+<span class="fc" id="L255">		return 	profilePhoto;</span>
+	}
+
+
+
+	/**
+	 * createAuditLogFromHeaders is a helper method to get audit log values from request header
+	 * @param auditMessage
+	 * &lt;p&gt; Audit message&lt;/p&gt;
+	 * @param auditType
+	 * &lt;p&gt;Audit type&lt;/p&gt;
+	 * @return AuditDTO
+	 */
+	private AuditDTO createAuditLogFromHeaders(String auditMessage, String auditType) {
+<span class="fc" id="L269">		AuditDTO auditRequest = new AuditDTO();</span>
+<span class="fc" id="L270">		auditRequest.setClientId(httpServlet.getHeader(&quot;clientId&quot;));</span>
+<span class="fc" id="L271">		auditRequest.setEmail(httpServlet.getHeader(&quot;email&quot;));</span>
+<span class="fc" id="L272">		auditRequest.setUserName(httpServlet.getHeader(&quot;userName&quot;));</span>
+<span class="fc" id="L273">		auditRequest.setUserId(Integer.parseInt(httpServlet.getHeader(&quot;userId&quot;)));</span>
+<span class="fc" id="L274">		auditRequest.setAuditMessage(auditMessage);</span>
+<span class="fc" id="L275">		auditRequest.setAuditType(auditType);</span>
+<span class="fc" id="L276">		return auditRequest;</span>
+	}
+
+	/**
+	 * getPhysiciansOfPatient returns list of physician belongs to particular patient
+	 * 
+	 * @param patientId
+	 * 	&lt;p&gt; unique patient id&lt;/p&gt;
+	 * @return List&lt;UserDTO&gt;
+	 * 	&lt;p&gt; return list of physician using userDTO&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves List of physician belongs to particular patient.&quot;, description = &quot;Retrieves List of physician belongs to particular patient.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/physicians-of-patient/{patientId}&quot;, method=RequestMethod.GET)
+	public  @ResponseBody List&lt;UserDTO&gt; getPhysiciansOfPatient(@PathVariable Integer patientId){
+<span class="fc" id="L290">		List&lt;UserDTO&gt; physiciansList = userManagementService.getPhysiciansOfPatient(patientId);</span>
+<span class="fc" id="L291">		logger.debug(&quot;Patient id &quot;+patientId+&quot; has &quot;+physiciansList.size()+&quot; physicians&quot;);</span>
+<span class="fc" id="L292">		return 	physiciansList;</span>
+	}
+
+	/**
+	 * getPhysicians returns list of physician and physician-assistant belongs to particular site
+	 * 
+	 * @param siteId, role
+	 * 	&lt;p&gt; unique site id&lt;/p&gt;
+	 * 	&lt;p&gt;role can be physician, physician-assistant or all
+	 * @return List&lt;UserDTO&gt;
+	 * 	&lt;p&gt; return list of physician using userDTO&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves List of physician or physician-assistant belongs to particular site.&quot;, description = &quot;Retrieves List of physician or physician-assistant belongs to particular site based on role.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/site-users/{siteId}/{role}&quot;, method=RequestMethod.GET)
+	public  @ResponseBody List&lt;UserDTO&gt; getPhysicians(@PathVariable Integer siteId, @PathVariable String role){
+<span class="fc" id="L307">		List&lt;UserDTO&gt; physiciansList = userManagementService.getPhysicians(siteId,role);</span>
+<span class="fc" id="L308">		logger.debug(&quot;Site &quot;+siteId+&quot; has &quot;+physiciansList.size()+&quot; &quot;+role);</span>
+<span class="fc" id="L309">		return 	physiciansList;</span>
+	}
+
+	/**
+	 * getPhysiciansLookup returns list of users belongs to particular site
+	 * 
+	 * @param siteId, role
+	 * 	&lt;p&gt; unique site id&lt;/p&gt;
+	 * 	&lt;p&gt;role can be physician, physician-assistant or all
+	 * @return List&lt;UserDTO&gt;
+	 * 	&lt;p&gt; return list of physician using userLookupDTO&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves Lookup list of users belongs to particular site.&quot;, description = &quot;Retrieves Lookup list of users belongs to particular site.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/users-lookup/{siteId}/{role}&quot;, method=RequestMethod.GET)
+	public  @ResponseBody List&lt;UserLookupDTO&gt; getPhysiciansLookup(@PathVariable Integer siteId, @PathVariable String role){
+<span class="fc" id="L324">		logger.debug(&quot;Site id: &quot;+siteId+&quot; role: &quot;+role);</span>
+<span class="fc" id="L325">		List&lt;UserDTO&gt; physiciansList = userManagementService.getPhysicians(siteId,role);</span>
+<span class="fc" id="L326">		List&lt;UserLookupDTO&gt; usersList = new ArrayList&lt;UserLookupDTO&gt;();</span>
+<span class="pc bpc" id="L327" title="1 of 4 branches missed.">		if(physiciansList!=null &amp;&amp; physiciansList.size() &gt; 0) {</span>
+<span class="fc" id="L328">			return (physiciansList.stream().map((physician)-&gt;{</span>
+<span class="fc" id="L329">				String name = physician.getFirstName() +&quot; &quot;+physician.getLastName();</span>
+<span class="pc bpc" id="L330" title="2 of 4 branches missed.">				if(physician.getMiddleName()!=null &amp;&amp; !physician.getMiddleName().isEmpty()) {</span>
+<span class="fc" id="L331">					name = physician.getFirstName() +&quot; &quot;+physician.getMiddleName()+&quot; &quot;+physician.getLastName();</span>
+				}
+<span class="fc" id="L333">				UserLookupDTO user = new UserLookupDTO(physician.getId(), name);</span>
+<span class="fc" id="L334">				return user;</span>
+<span class="fc" id="L335">			}).collect(Collectors.toList()));</span>
+		}
+<span class="fc" id="L337">		return 	usersList;</span>
+	}
+
+
+	/**
+	 * getPatientDetails returns list of patient belongs to particular physician
+	 * 
+	 * @param physicianId
+	 * 	&lt;p&gt; unique physician id&lt;/p&gt;
+	 * @return List&lt;UserDTO&gt;
+	 * 	&lt;p&gt; return list of patient using userDTO&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves List of patient belongs to particular physician.&quot;, description = &quot;Retrieves List of patient belongs to particular physician.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value=&quot;/patients-of-physician/{physicianId}&quot;,method=RequestMethod.GET)
+	public @ResponseBody List&lt;UserDTO&gt; getPatientDetails(@PathVariable(&quot;physicianId&quot;) Integer physicianId ){
+<span class="fc" id="L352">		logger.debug(&quot;Physician id: &quot;+physicianId);</span>
+<span class="fc" id="L353">		List&lt;UserDTO&gt; patients=userManagementService.getPatientDetails(physicianId);</span>
+<span class="fc" id="L354">		logger.debug(&quot;Patients of physician :&quot;+patients.size());</span>
+<span class="fc" id="L355">		return patients;</span>
+	}
+
+	/**
+	 * getPatients returns list of patient based on site
+	 * 
+	 * @param siteId
+	 * 	&lt;p&gt; unique site id&lt;/p&gt;
+	 * @return List&lt;UserDTO&gt;
+	 * 	&lt;p&gt; return list of patient using userDTO&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves List of patient based on site.&quot;, description = &quot;Retrieves List of patient based on site.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/patients/{siteId}&quot;, method=RequestMethod.GET)
+	public  @ResponseBody List&lt;UserDTO&gt; getPatients(@PathVariable Integer siteId){
+<span class="fc" id="L369">		logger.debug(&quot;Site id:&quot;+siteId);</span>
+<span class="fc" id="L370">		List&lt;UserDTO&gt; patientList = userManagementService.getPatients(siteId);</span>
+<span class="fc" id="L371">		logger.debug(&quot;Patient list:&quot;+patientList.size());</span>
+<span class="fc" id="L372">		return 	patientList;</span>
+	}
+
+	/**
+	 * updateSiteInfo returns status of updation of site
+	 * 
+	 * @param siteId
+	 * 	&lt;p&gt;unique site id&lt;/p&gt;
+	 * @return statusDTO
+	 * 	&lt;p&gt;return status&lt;/p&gt;
+	 */
+
+	@Operation(summary = &quot;Updates Site details based on siteId.&quot;, description = &quot;Updates Site details based on siteId.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/site/{siteId}&quot;, method=RequestMethod.PUT)
+	public StatusDTO updateSiteInfo(@PathVariable Integer siteId, @RequestBody SiteDTO siteDTO) {
+<span class="fc" id="L387">		logger.debug(&quot;Site id:&quot;+siteId+&quot;\nRequest: &quot;+siteDTO);</span>
+<span class="fc" id="L388">		String updatedBy = httpServlet.getHeader(&quot;userName&quot;);</span>
+<span class="fc" id="L389">		siteDTO.setUpdatedBy(updatedBy);</span>
+<span class="fc" id="L390">		siteDTO.setId(siteId);</span>
+<span class="fc" id="L391">		userManagementService.updateSiteInfo(siteDTO);</span>
+<span class="fc" id="L392">		String auditMessage = String.format(AM_UPDATE_SITE,siteId); </span>
+<span class="fc" id="L393">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_UPDATE_SITE);</span>
+<span class="fc" id="L394">		logger.debug(&quot;Audit request : &quot; + auditDTO);</span>
+<span class="fc" id="L395">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L396">		return new StatusDTO(&quot;SUC_000&quot;, &quot;Site information updated successfully.&quot;);</span>
+	}
+
+	/**
+	 * getSite retrieves a site based on siteId.
+	 * 
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @return siteDTO
+	 * &lt;p&gt;Data transfer object of site&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves details of a site.&quot;, description = &quot;Retrieves details of a site.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/site/{siteId}&quot;, method=RequestMethod.GET)
+	public @ResponseBody SiteDTO getSiteDetails(@PathVariable Integer siteId){
+<span class="fc" id="L410">		logger.debug(&quot;Site id: &quot;+siteId);</span>
+<span class="fc" id="L411">		SiteDTO site = userManagementService.getSiteDetails(siteId);</span>
+<span class="fc" id="L412">		logger.debug(&quot;Site details: &quot;+site);</span>
+<span class="fc" id="L413">		return 	site;</span>
+	}
+
+	/**
+	 * updateUserInfo method returns status of updation of user based on user id
+	 * @param userId
+	 * 	&lt;p&gt;unique user id&lt;/p&gt;
+	 * @param userRequest
+	 * 	&lt;p&gt; Data transfer object of user&lt;/p&gt;
+	 * @return statusDTO
+	 * 	&lt;p&gt;status of updation&lt;/p&gt;
+	 */
+
+	@Operation(summary = &quot;Updates User Profile based on userId.&quot;, description = &quot;Updates User Profile based on userId.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/user/{userId}&quot;, method=RequestMethod.PUT)
+	public StatusDTO updateUserInfo(@PathVariable Integer userId, @RequestBody UserDTO userRequest) {
+<span class="fc" id="L429">		logger.debug(&quot;User id: &quot;+userId+&quot;\nRequest: &quot;+userRequest);</span>
+<span class="fc" id="L430">		String updatedBy = httpServlet.getHeader(&quot;userName&quot;);</span>
+<span class="fc" id="L431">		userRequest.setUpdatedBy(updatedBy);</span>
+<span class="fc" id="L432">		userManagementService.updateUserProfile(userId, userRequest);</span>
+<span class="fc" id="L433">		String auditMessage = String.format(AM_PROFILE_UPDATED, httpServlet.getHeader(&quot;userName&quot;));</span>
+<span class="fc" id="L434">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_UPDATE_USER);</span>
+<span class="fc" id="L435">		logger.debug(&quot;Audit request : &quot; + auditDTO);</span>
+<span class="fc" id="L436">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L437">		return new StatusDTO(&quot;SUC_000&quot;, &quot;User information updated successfully.&quot;);</span>
+	}
+
+	/**
+	 * addLicenses method is used to assign licenses to a site.
+	 * @param siteId
+	 * 	&lt;p&gt;unique site id&lt;/p&gt;
+	 * @param licenseQty
+	 * 	&lt;p&gt;license quantity&lt;/p&gt;
+	 * @return status
+	 */
+	@Operation(summary = &quot;Add Licenses.&quot;, description = &quot;Assign licenses to a site.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value=&quot;/licenses/{siteId}/{licenseQty}&quot;, method = RequestMethod.POST)
+	public StatusDTO addLicenses(@PathVariable Integer siteId, @PathVariable Integer licenseQty) {
+<span class="fc" id="L451">		logger.debug(&quot;Site id: &quot;+siteId+&quot; License Quantity: &quot;+licenseQty);</span>
+<span class="fc" id="L452">		String createdBy = httpServlet.getHeader(&quot;userName&quot;);</span>
+<span class="fc" id="L453">		userManagementService.addLicensesToSite(siteId,licenseQty,createdBy);</span>
+<span class="fc" id="L454">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, licenseQty+&quot; Licenses assigned to site id &quot;+siteId);</span>
+<span class="fc" id="L455">		String auditMessage = String.format(AM_ADD_LICENSES,licenseQty,siteId);</span>
+<span class="fc" id="L456">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_ADD_LICENSES);</span>
+<span class="fc" id="L457">		logger.debug(&quot;Audit request : &quot; + auditDTO);</span>
+<span class="fc" id="L458">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L459">		return status;</span>
+	}
+
+	/**
+	 * disableUserFromSite method is used to disable the user from the site.
+	 * @param siteId
+	 * 	&lt;p&gt;unique site id&lt;p/&gt;
+	 * @param patientId
+	 * 	&lt;p&gt;unique patient id&lt;/p&gt;
+	 * @return status
+	 */
+	@Operation(summary = &quot;Disable user from site.&quot;, description = &quot;Disable user from site.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value=&quot;/disable-user-from-site/{siteId}/{patientId}&quot;, method = RequestMethod.PUT)
+	public StatusDTO disableUserFromSite(@PathVariable Integer siteId, @PathVariable Integer patientId) {
+<span class="fc" id="L473">		logger.debug(&quot;Site id: &quot;+siteId+&quot;\nPatient id: &quot;+patientId);</span>
+<span class="fc" id="L474">		String updatedBy = httpServlet.getHeader(&quot;userName&quot;);</span>
+<span class="fc" id="L475">		userManagementService.disablePatientFromSite(siteId, patientId, updatedBy);</span>
+<span class="fc" id="L476">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, &quot;Disabled patient id &quot;+patientId);</span>
+<span class="fc" id="L477">		String auditMessage = String.format(AM_DISABLE_PATIENT,patientId,siteId);</span>
+<span class="fc" id="L478">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_DISABLE_PATIENT);</span>
+<span class="fc" id="L479">		logger.debug(&quot;Audit request : &quot; + auditDTO);</span>
+<span class="fc" id="L480">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L481">		return status;</span>
+	}
+	
+	@Operation(summary = &quot;Fetches license usage report based on siteId.&quot;, description = &quot;Fetches license usage report based on siteId.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value=&quot;/license-usage-report/{siteId}&quot;, method = RequestMethod.GET)
+	public @ResponseBody List&lt;LicenseReportDTO&gt; getReport(@PathVariable Integer siteId, @RequestParam(required = false) String startdate, @RequestParam(required = false) String enddate){
+<span class="fc" id="L487">		Date startDate=null;</span>
+<span class="fc" id="L488">		Date endDate=null;</span>
+<span class="pc bpc" id="L489" title="1 of 2 branches missed.">		if(startdate != null) {</span>
+			try {
+<span class="fc" id="L491">				startDate = new SimpleDateFormat(&quot;yyyy-MM-dd&quot;).parse(startdate);</span>
+<span class="nc" id="L492">			} catch (ParseException e) {</span>
+<span class="nc" id="L493">				logger.debug(e.getMessage());</span>
+<span class="nc" id="L494">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L495">			} </span>
+		}
+<span class="pc bpc" id="L497" title="1 of 2 branches missed.">		if(enddate!=null) {</span>
+			try {
+<span class="fc" id="L499">				endDate = new SimpleDateFormat(&quot;yyyy-MM-dd&quot;).parse(enddate);</span>
+<span class="nc" id="L500">			} catch (ParseException e) {</span>
+<span class="nc" id="L501">				logger.debug(e.getMessage());</span>
+<span class="nc" id="L502">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L503">			} </span>
+		}
+<span class="fc" id="L505">		logger.debug(&quot;Site id:&quot;+siteId+&quot; Start date: &quot;+startDate+&quot; End date: &quot;+endDate);</span>
+<span class="fc" id="L506">		List&lt;LicenseReportDTO&gt; licenseReport = userManagementService.getReport(siteId,startDate,endDate);</span>
+<span class="fc" id="L507">		logger.debug(&quot;Physician report:&quot;+licenseReport.size());</span>
+<span class="fc" id="L508">		return licenseReport;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

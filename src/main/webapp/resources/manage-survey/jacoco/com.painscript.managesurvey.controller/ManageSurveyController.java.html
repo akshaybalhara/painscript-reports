@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ManageSurveyController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">manage-survey-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.managesurvey.controller</a> &gt; <span class="el_source">ManageSurveyController.java</span></div><h1>ManageSurveyController.java</h1><pre class="source lang-java linenums">package com.painscript.managesurvey.controller;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.lang3.time.DateUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.painscript.managesurvey.constants.SurveyManagementConstants;
+import com.painscript.managesurvey.dto.AuditDTO;
+import com.painscript.managesurvey.dto.PatientReportDTO;
+import com.painscript.managesurvey.dto.QuestionDTO;
+import com.painscript.managesurvey.dto.StatusDTO;
+import com.painscript.managesurvey.dto.SurveyPatientDTO;
+import com.painscript.managesurvey.dto.SurveyResponseDTO;
+import com.painscript.managesurvey.dto.SurveyResponseWorkflowDTO;
+import com.painscript.managesurvey.dto.UserSummaryDTO;
+import com.painscript.managesurvey.exception.PainscriptBusinessException;
+import com.painscript.managesurvey.proxies.AuditLogProxy;
+import com.painscript.managesurvey.service.ManageSurveyService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+/**
+ * ManageSurveyController is the core controller of ManageSurvey Micro Service
+ * which do have business API's to manage therapy.
+ * 
+ * @author Prolifics.
+ *
+ */
+@CrossOrigin(origins = &quot;*&quot;)
+@RestController
+@RequestMapping(&quot;/manage-survey&quot;)
+@Tag(name = &quot;ManageSurvey&quot;, description = &quot;Manage Survey Service API&quot;)
+<span class="fc" id="L50">public class ManageSurveyController implements SurveyManagementConstants{</span>
+
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L55">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+
+	/**
+	 * The HttpServletRequest instance to get the incoming request headers.
+	 */
+	@Autowired
+	private HttpServletRequest httpServlet;
+
+	/**
+	 * The AuditLogProxy to log audit messages using open-feign client.
+	 * AuditLogProxy Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private AuditLogProxy auditProxy;
+
+	/**
+	 * ManageTherapyService Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private ManageSurveyService manageSurveyService;
+
+	/**
+	 * getQuestionsList retrieves all questions based on status
+	 * 
+	 * @param status
+	 * &lt;p&gt;Status of question &lt;/p&gt;
+	 * @return List&lt;QuestionDTO&gt; 
+	 * &lt;p&gt; return the list of questions using Question&lt;DTO&gt; &lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves all questions based on status.&quot;, description = &quot;Retrieves all questions based on status.&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value = &quot;/questions/{status}&quot;, method=RequestMethod.GET)
+	public List&lt;QuestionDTO&gt; getQuestionsList(@PathVariable String status){
+<span class="fc" id="L87">		List&lt;QuestionDTO&gt; questions = manageSurveyService.getQuestionsList(status);</span>
+<span class="fc" id="L88">		return 	questions;</span>
+	}
+
+	/**
+	 * createAuditLogFromHeaders is a helper method to get audit log values from request header
+	 * 
+	 * @return AuditDTO
+	 */
+	private AuditDTO createAuditLogFromHeaders(String auditMessage, String auditType) {
+<span class="fc" id="L97">		AuditDTO auditRequest = new AuditDTO();</span>
+<span class="fc" id="L98">		auditRequest.setClientId(httpServlet.getHeader(&quot;clientId&quot;));</span>
+<span class="fc" id="L99">		auditRequest.setEmail(httpServlet.getHeader(&quot;email&quot;));</span>
+<span class="fc" id="L100">		auditRequest.setUserName(httpServlet.getHeader(&quot;userName&quot;));</span>
+<span class="fc" id="L101">		auditRequest.setUserId(Integer.parseInt(httpServlet.getHeader(&quot;userId&quot;)));</span>
+<span class="fc" id="L102">		auditRequest.setAuditMessage(auditMessage);</span>
+<span class="fc" id="L103">		auditRequest.setAuditType(auditType);</span>
+<span class="fc" id="L104">		return auditRequest;</span>
+	}
+
+	/**
+	 * getPatientSurvey returns list of survey based on patient id
+	 * 
+	 * @param patientId
+	 * 	&lt;p&gt; unique patient id&lt;/p&gt;
+	 * @return List&lt;SurveyPatientDTO&gt;
+	 * 	&lt;p&gt; return list of survey using SurveyPatientDTO&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves surveys assigned to a patient.&quot;, description = &quot;Retrieves List of survey assigned to patient.&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value = &quot;/surveys/{patientId}&quot;, method=RequestMethod.GET)
+	public  @ResponseBody List&lt;SurveyPatientDTO&gt; getPatientSurvey(@PathVariable Integer patientId){
+<span class="fc" id="L118">		List&lt;SurveyPatientDTO&gt; surveypatientList = manageSurveyService.getPatientSurvey(patientId);</span>
+<span class="fc" id="L119">		logger.debug(surveypatientList.size()+&quot; surveys assigned to patient id &quot;+patientId);</span>
+<span class="fc" id="L120">		return 	surveypatientList;</span>
+	}
+
+	/**
+	 * getSurveyById returns a particular survey based on patient survey id
+	 * 
+	 * @param patientSurveyId 
+	 * &lt;p&gt;unique patient survey id&lt;/p&gt;
+	 * @return SurveyPatientDTO 
+	 * 
+	 * &lt;p&gt; return a particular survey using SurveyPatientDTO
+	 */
+	@Operation(summary = &quot;Retrieves a particular survey by it's id.&quot;, description = &quot;Retrieves a particular survey that is assigned to patient.&quot;, tags= {&quot;ManageSurvey&quot;})
+	@RequestMapping(value=&quot;/survey/{patientSurveyId}&quot;, method=RequestMethod.GET)
+	public SurveyPatientDTO getSurveyById(@PathVariable Integer patientSurveyId) {
+<span class="fc" id="L135">		logger.debug(&quot;Patient Survey Id: &quot;+patientSurveyId);</span>
+<span class="fc" id="L136">		return manageSurveyService.getSurvey(patientSurveyId);</span>
+	}
+
+	/**
+	 * getEscalatedSurvey returns list of Escalated survey 
+	 * 
+	 * @param physicianId
+	 * 	&lt;p&gt; unique physician id&lt;/p&gt;
+	 * @return List&lt;SurveyResponseDTO&gt;
+	 * 	&lt;p&gt; return list of escalated survey using SurveyResponseDTO&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves List of Esclated Survey based on physician id.&quot;, description = &quot;Retrieves List of Escalated survey escalated to physician.&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value = &quot;/escalated-surveys/{physicianId}&quot;, method=RequestMethod.GET)
+	public  @ResponseBody List&lt;SurveyResponseDTO&gt; getEscalatedSurvey(@PathVariable Integer physicianId){
+<span class="fc" id="L150">		List&lt;SurveyResponseDTO&gt; escalatedSurveyList = manageSurveyService.getEscalatedSurvey(physicianId);</span>
+<span class="fc" id="L151">		logger.debug(escalatedSurveyList.size()+&quot; escalated cases pending with physician id &quot;+physicianId);</span>
+<span class="fc" id="L152">		return 	escalatedSurveyList;</span>
+	}
+
+	/**
+	 * getEscalatedNotes returns list of Escalated Survey Notes 
+	 * 
+	 * @param patientSurveyResponseId
+	 * 	&lt;p&gt; unique survey response id&lt;/p&gt;
+	 * @return List&lt;SurveyResponseWorkflowDTO&gt;
+	 * 	&lt;p&gt; return list of escalated Survey Notes using SurveyResponseWorkflowDTO&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Retrieves List of Esclated Notes.&quot;, description = &quot;Retrieves List of Escalated Notes based on response id.&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value = &quot;/survey-response/escalationNotes/{patientSurveyResponseId}&quot;, method=RequestMethod.GET)
+	public  @ResponseBody List&lt;SurveyResponseWorkflowDTO&gt; getEscalationNotes(@PathVariable Integer patientSurveyResponseId){
+<span class="fc" id="L166">		List&lt;SurveyResponseWorkflowDTO&gt; escalatedSurveyNotesList = manageSurveyService.getEscalatedNotes(patientSurveyResponseId);</span>
+<span class="fc" id="L167">		logger.debug(patientSurveyResponseId+&quot; has &quot;+escalatedSurveyNotesList.size()+&quot; escalated notes.&quot;);</span>
+<span class="fc" id="L168">		return 	escalatedSurveyNotesList;</span>
+	}
+
+	/**
+	 * assignSurvey assign survey to patient 
+	 * 
+	 * @param patientId
+	 * 	&lt;p&gt; unique patient id&lt;/p&gt;
+	 * @param SurveyPatientDTO
+	 *  &lt;p&gt; DTO of SurveyPatient
+	 * @return StatusDTO
+	 * 	&lt;p&gt; status of assigning survey to patient&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Assign survey to patient.&quot;, description = &quot;Return status of assigning survey to patient.&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value = &quot;/assign-survey/{patientId}&quot;, method=RequestMethod.POST)
+	public StatusDTO assignSurvey(@RequestBody SurveyPatientDTO surveyPatientDTO, @PathVariable Integer patientId){
+<span class="fc" id="L184">		surveyPatientDTO.setCreatedBy(httpServlet.getHeader(&quot;userName&quot;));</span>
+<span class="fc" id="L185">		Integer surveyId = manageSurveyService.assignSurveyToPatient(surveyPatientDTO,patientId);</span>
+<span class="fc" id="L186">		logger.debug(&quot;Survey id &quot;+surveyId+&quot; assigned to patient id: &quot;+patientId);</span>
+<span class="fc" id="L187">		String auditMessage = String.format(AM_ASSIGN_SURVEY,surveyId);</span>
+<span class="fc" id="L188">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_ASSIGN_SURVEY);</span>
+<span class="fc" id="L189">		logger.debug(&quot;Request : &quot; + auditDTO);</span>
+<span class="fc" id="L190">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L191">		return 	new StatusDTO(&quot;SUC_000&quot;,&quot;Survey assigned successfully.&quot;);</span>
+	}
+
+	/**
+	 * getSurveyResponse returns a particular patient survey response based on patient survey response id
+	 * 
+	 * @param patientSurveyResponseId 
+	 * &lt;p&gt;unique patient survey response id&lt;/p&gt;
+	 * @return SurveyPatientResponseDTO 
+	 * 
+	 * &lt;p&gt; return a particular survey response using SurveyPatientResponseDTO
+	 */
+	@Operation(summary = &quot;Retrieves a particular patient survey response by it's id.&quot;, description = &quot;Retrieves a particular survey response that is completed patient.&quot;, tags= {&quot;ManageSurvey&quot;})
+	@RequestMapping(value=&quot;/survey-response/{patientSurveyResponseId}&quot;,method = RequestMethod.GET)
+	public SurveyResponseDTO getPatientSurveyResonse(@PathVariable Integer patientSurveyResponseId ) {
+<span class="fc" id="L206">		logger.debug(&quot;PatientSurveyResponseId: &quot;+patientSurveyResponseId);</span>
+<span class="fc" id="L207">		return manageSurveyService.getSurveyResponse(patientSurveyResponseId);</span>
+	}
+
+	/**
+	 * getPatientSummary method is used to get all information about patient.
+	 * @param patientId
+	 * &lt;p&gt;unique patientId
+	 * @return UserSummaryDTO
+	 */
+	@Operation(summary = &quot;Get all information about patient.&quot;, description = &quot;This operation retrives all information about a patient.&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value=&quot;/patient-summary/{patientId}&quot;, method = RequestMethod.GET)
+	public UserSummaryDTO getPatientSummary(@PathVariable Integer patientId) {
+<span class="fc" id="L219">		logger.debug(&quot;Patient Id: &quot;+patientId);</span>
+<span class="fc" id="L220">		UserSummaryDTO userCompleteDetails = manageSurveyService.getPatientSummary(patientId);</span>
+<span class="fc" id="L221">		return userCompleteDetails;</span>
+	}
+
+	/**
+	 * setPatientSurveyResponse set the response to the survey 
+	 * 
+	 * @param patientId,surveyId
+	 * 	&lt;p&gt; unique patient id&lt;/p&gt;
+	 *  &lt;p&gt; unique survey id&lt;/p&gt;
+	 * @return List&lt;StatusDTO&gt;
+	 * 	&lt;p&gt; status of assigning survey to patient&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Record response of survey.&quot;, description = &quot;Return status of recording response of survey from patient using patient id and survey id.&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value = &quot;/survey-response/{surveyId}&quot;, method=RequestMethod.POST)
+	public StatusDTO submitPatientSurveyResponse(@RequestBody SurveyResponseDTO surveyResponseDTO, @PathVariable Integer surveyId){
+<span class="fc" id="L236">		surveyResponseDTO.setCreatedBy(httpServlet.getHeader(&quot;userName&quot;));</span>
+<span class="fc" id="L237">		int patientId = Integer.parseInt(httpServlet.getHeader(&quot;userId&quot;));</span>
+<span class="fc" id="L238">		Integer surveyResponseId = manageSurveyService.savePatientSurveyResponse(surveyResponseDTO,patientId,surveyId);</span>
+<span class="fc" id="L239">		logger.debug(&quot;Successfully recorded response against survey id: &quot;+surveyId);</span>
+<span class="fc" id="L240">		String auditMessage = String.format(AM_SUBMIT_SURVEY,surveyResponseId);</span>
+<span class="fc" id="L241">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_SUBMIT_SURVEY);</span>
+<span class="fc" id="L242">		logger.debug(&quot;Request : &quot; + auditDTO);</span>
+<span class="fc" id="L243">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L244">		return 	new StatusDTO(&quot;SUC_000&quot;,&quot;Response recorded successfully.&quot;);</span>
+	}
+
+	/**
+	 * updateSurvey update survey of patient 
+	 * 
+	 * @param patientSurveyId, SurveyPatientDTO
+	 * 	&lt;p&gt; unique patient survey id&lt;/p&gt;
+	 * &lt;p&gt;DTO of SurveyPatient
+	 * @return List&lt;StatusDTO&gt;
+	 * 	&lt;p&gt; status of updating survey of patient&lt;/p&gt;
+	 */
+
+	@Operation(summary = &quot;Updates a survey by patient by it's surveyId &quot;, description = &quot;Updates a survey by the patient through the surveyId&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value=&quot;/survey/{patientSurveyId}&quot;,method = RequestMethod.PUT)
+	public StatusDTO updatePatientSurvey(@RequestBody SurveyPatientDTO surveyPatientDTO, @PathVariable Integer patientSurveyId) {
+<span class="fc" id="L260">		surveyPatientDTO.setUpdatedBy(httpServlet.getHeader(&quot;userName&quot;));</span>
+<span class="fc" id="L261">		Integer surveyId=manageSurveyService.updatePatientSurvey(surveyPatientDTO, patientSurveyId);</span>
+<span class="fc" id="L262">		logger.debug(&quot;Successfully updated survey: &quot;+patientSurveyId);</span>
+<span class="fc" id="L263">		String auditMessage = String.format(AM_UPDATE_SURVEY,surveyId);</span>
+<span class="fc" id="L264">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_UPDATE_SURVEY);</span>
+<span class="fc" id="L265">		logger.debug(&quot;Request :&quot; + auditDTO);</span>
+<span class="fc" id="L266">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L267">		return new StatusDTO(&quot;SUC_000&quot;, &quot;Updated Survey successfully&quot;);</span>
+	}
+
+	/**
+	 * reviewSurvey Review survey of patient 
+	 * 
+	 * @param patientSurveyResponseId, SurveyResponseDTO
+	 * 	&lt;p&gt; unique survey response id&lt;/p&gt;
+	 * &lt;p&gt;DTO of SurveyResponse
+	 * @return List&lt;StatusDTO&gt;
+	 * 	&lt;p&gt; status of reviewing survey of patient&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Reviews a survey by physician by surveyId &quot;, description = &quot;Review done by physician through the surveyId &quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value=&quot;/review-survey/{patientSurveyResponseId}&quot;,method = RequestMethod.PUT)
+	public StatusDTO reviewSurvey(@RequestBody SurveyResponseDTO surveyResponse,@PathVariable Integer patientSurveyResponseId) {
+<span class="fc" id="L282">		surveyResponse.setUpdatedBy(httpServlet.getHeader(&quot;userName&quot;));</span>
+<span class="fc" id="L283">		Integer loggedUserId = Integer.parseInt(httpServlet.getHeader(&quot;userId&quot;));</span>
+<span class="fc" id="L284">		surveyResponse.setId(patientSurveyResponseId);</span>
+<span class="fc" id="L285">		Integer surveyId=manageSurveyService.reviewSurvey(surveyResponse,loggedUserId);</span>
+<span class="fc" id="L286">		String auditMessage = String.format(AM_REVIEW_SURVEY,surveyId,ACTIVE);</span>
+<span class="fc" id="L287">		AuditDTO auditDTO = createAuditLogFromHeaders(auditMessage, AT_REVIEW_SURVEY);</span>
+<span class="fc" id="L288">		logger.debug(&quot;Request :&quot; + auditDTO);</span>
+<span class="fc" id="L289">		auditProxy.auditLog(auditDTO);</span>
+<span class="fc" id="L290">		return new StatusDTO(&quot;SUC_000&quot;,&quot;Reviewed survey successfully.&quot;);</span>
+	}
+
+	/**
+	 * getPatientReport method is used to get patient progress report.
+	 * @param patientId
+	 * &lt;p&gt;unique patientId
+	 * @return PatientReportDTO
+	 */
+	@Operation(summary = &quot;This endpoint is used to get patient progress report between specified dates.&quot;, description = &quot;This endpoint is used to get patient progress report between specified dates.&quot;, tags = { &quot;ManageSurvey&quot; })
+	@RequestMapping(value=&quot;/patient-progress-report/{patientId}&quot;, method = RequestMethod.GET)
+	public List&lt;PatientReportDTO&gt; getPatientReport(@PathVariable Integer patientId, @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {		
+<span class="fc" id="L302">		Date sDate=null;</span>
+<span class="fc" id="L303">		Date eDate=null;</span>
+<span class="fc" id="L304">		SimpleDateFormat formatter = new SimpleDateFormat(&quot;yyyy-MM-dd&quot;); </span>
+<span class="fc bfc" id="L305" title="All 2 branches covered.">		if(startDate != null) {</span>
+			try {
+<span class="fc" id="L307">				sDate = formatter.parse(startDate);</span>
+<span class="nc" id="L308">			} catch (ParseException e) {</span>
+<span class="nc" id="L309">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L310">			} </span>
+		}
+
+<span class="fc bfc" id="L313" title="All 2 branches covered.">		if(endDate!=null) {</span>
+			try {
+				//Add 1 day extra to include endDate in result
+<span class="fc" id="L316">				eDate = DateUtils.addDays(formatter.parse(endDate),1);</span>
+<span class="nc" id="L317">			} catch (ParseException e) {</span>
+<span class="nc" id="L318">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L319">			} </span>
+		}
+		
+<span class="fc bfc" id="L322" title="All 4 branches covered.">		if (startDate == null &amp;&amp; endDate == null) {</span>
+			//Add 1 day extra to include endDate in result
+<span class="fc" id="L324">			eDate = DateUtils.addDays(new Date(),1);</span>
+<span class="fc" id="L325">			sDate = DateUtils.addDays(eDate,-30);</span>
+<span class="fc bfc" id="L326" title="All 4 branches covered.">		}else if(startDate!=null &amp;&amp; endDate==null){</span>
+<span class="pc bpc" id="L327" title="1 of 2 branches missed.">			if(sDate.compareTo(new Date()) &lt;= 0) {</span>
+<span class="fc" id="L328">				eDate = DateUtils.addDays(sDate,31);</span>
+			}else {
+<span class="nc" id="L330">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Start date must not be a future date.&quot;);</span>
+			}
+<span class="pc bpc" id="L332" title="1 of 4 branches missed.">		}else if(startDate==null &amp;&amp; endDate!=null){</span>
+<span class="pc bpc" id="L333" title="1 of 2 branches missed.">			if(eDate.compareTo(new Date()) &lt;= 0) {</span>
+<span class="fc" id="L334">				sDate = DateUtils.addDays(eDate,-30);</span>
+			}else {
+<span class="nc" id="L336">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;End date must not be a future date.&quot;);</span>
+			}
+		}
+<span class="fc" id="L339">		logger.debug(&quot;Patient Id: &quot;+patientId+&quot; Start Date: &quot;+sDate+&quot; End Date: &quot;+eDate);</span>
+<span class="fc" id="L340">		List&lt;PatientReportDTO&gt; patientReport = manageSurveyService.getPatientReport(patientId,sDate,eDate);</span>
+<span class="fc" id="L341">		return patientReport;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

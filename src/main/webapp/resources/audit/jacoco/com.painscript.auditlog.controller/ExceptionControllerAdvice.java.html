@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExceptionControllerAdvice.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">audit-log-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.auditlog.controller</a> &gt; <span class="el_source">ExceptionControllerAdvice.java</span></div><h1>ExceptionControllerAdvice.java</h1><pre class="source lang-java linenums">package com.painscript.auditlog.controller;
+
+import java.util.Locale;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import com.painscript.auditlog.dto.ErrorResponseDTO;
+import com.painscript.auditlog.exception.PainscriptBusinessException;
+
+/**
+ * ExceptionControllerAdvice is the intercepter which gets triggered
+ * when any Exception is raised from an Controller in the Project.
+ * 
+ * @author Prolifics.
+ *
+ */
+@ControllerAdvice
+<span class="fc" id="L23">public class ExceptionControllerAdvice {</span>
+	/**
+	 * The System Error Code.
+	 */
+	private static final String SYSTEM_ERROR_CODE = &quot;SYS_000&quot;;
+		
+	/**
+	 * messageSource - ResourceBundleMessageSource instance to transform
+	 * error codes to meaningful messages.
+	 */
+	@Autowired
+	protected ResourceBundleMessageSource messageSource;
+	
+	/**
+	 * The specific Exception Handler method which intercepts any raised Exception.
+	 * 
+	 * @param ex
+	 * 	&lt;p&gt;The Exception raised.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;Meaningful message wrapped with an Error Code.&lt;/p&gt;
+	 */
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity&lt;ErrorResponseDTO&gt; exceptionHandler(Exception ex) {
+<span class="fc" id="L46">		ErrorResponseDTO error = new ErrorResponseDTO();</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">		if(ex instanceof PainscriptBusinessException ){</span>
+<span class="fc" id="L48">			PainscriptBusinessException be = (PainscriptBusinessException)ex;</span>
+<span class="fc" id="L49">			error.setErrorCode(be.getErrorCode());</span>
+<span class="fc" id="L50">			error.setMessage( messageSource.getMessage(be.getErrorCode(), null, be.getMessage(), Locale.ENGLISH));			</span>
+<span class="fc" id="L51">		}else{</span>
+<span class="fc" id="L52">			error.setErrorCode(SYSTEM_ERROR_CODE);			</span>
+<span class="fc" id="L53">			error.setMessage( messageSource.getMessage(SYSTEM_ERROR_CODE, null, Locale.ENGLISH));</span>
+<span class="fc" id="L54">			error.setCause(ex.getMessage());</span>
+		}		
+<span class="fc" id="L56">		return new ResponseEntity&lt;ErrorResponseDTO&gt;(error, HttpStatus.INTERNAL_SERVER_ERROR);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

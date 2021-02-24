@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthRepositoryImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.auth.repositoryimpl</a> &gt; <span class="el_source">AuthRepositoryImpl.java</span></div><h1>AuthRepositoryImpl.java</h1><pre class="source lang-java linenums">package com.painscript.auth.repositoryimpl;
+
+import java.sql.Timestamp;
+import java.util.Date;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
+import javax.persistence.PersistenceUnit;
+
+import org.springframework.stereotype.Repository;
+
+import com.painscript.auth.exception.PainscriptBusinessException;
+import com.painscript.auth.model.User;
+import com.painscript.auth.repository.AuthRepository;
+
+/**
+ * AuthRepositoryImpl : Implementation class of AuthRepository.
+ * @author Prolifics
+ *
+ */
+@Repository
+<span class="fc" id="L23">public class AuthRepositoryImpl implements AuthRepository{</span>
+
+	/**
+	 * EntityManager instance is injected by Spring Framework.
+	 * 
+	 * This is used to manage all the Persistent entities
+	 * defined in the System.
+	 */
+
+	@PersistenceUnit
+	private EntityManagerFactory entityManagerFactory;
+	
+	/**
+	 * getUserDetailsByUsername retrieves the details of
+	 * a User corresponding to a specified userName.
+	 *  
+	 * @param userName
+	 * 	&lt;p&gt;The userName of User whose details needs to be fetched.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The details encapsulated in the User instance.&lt;/p&gt;
+	 */
+	@Override
+	public User getUserDetailsByUsername(String userName) {
+<span class="fc" id="L46">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L47">		String selectQuery = &quot;FROM User where username = :username&quot;;</span>
+<span class="fc" id="L48">		User user = (User) entityManager.createQuery(selectQuery).setParameter(&quot;username&quot;, userName).getResultList().get(0);</span>
+<span class="fc" id="L49">		entityManager.clear();</span>
+<span class="fc" id="L50">		entityManager.close();</span>
+<span class="fc" id="L51">		return user;</span>
+	}
+
+	/**
+	 * updateLastLoggedInTime updates user last logged in time
+	 * on every successful login.
+	 *  
+	 * @param id
+	 * 	&lt;p&gt;User id to be updated.&lt;/p&gt;
+	 * @param lastLoggedInTime
+	 * 	&lt;p&gt;Timestamp of login time.&lt;/p&gt;
+	 */
+	@Override
+	public void updateLastLoggedInTime(int id, Timestamp lastLoggedInTime) {
+<span class="fc" id="L65">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L66">		String selectQuery = &quot;FROM User where id = :userId&quot;;</span>
+<span class="fc" id="L67">		User userEntity = (User) entityManager.createQuery(selectQuery).setParameter(&quot;userId&quot;, id).getResultList().get(0);</span>
+<span class="fc" id="L68">		userEntity.setLastLoggedinTime(lastLoggedInTime);</span>
+<span class="fc" id="L69">		userEntity.setUpdatedDate(new Date());</span>
+<span class="fc" id="L70">		userEntity.setUpdatedBy(userEntity.getUsername());</span>
+<span class="fc" id="L71">		EntityTransaction entityTransaction = entityManager.getTransaction();</span>
+		try {
+			//Start of transaction
+<span class="fc" id="L74">			entityTransaction.begin();</span>
+			//persist method is used to do insertion of entities into their DB table.
+<span class="fc" id="L76">			entityManager.merge(userEntity);</span>
+			//commit will actually make this transaction persist in DB.
+<span class="fc" id="L78">			entityTransaction.commit();</span>
+<span class="nc" id="L79">		} catch (RuntimeException e) {</span>
+<span class="nc" id="L80">			entityTransaction.rollback();</span>
+<span class="nc" id="L81">			throw new PainscriptBusinessException(&quot;SMT_000&quot;,&quot;Something went wrong.&quot;);</span>
+		} finally {
+<span class="fc" id="L83">			entityManager.clear();</span>
+<span class="fc" id="L84">			entityManager.close();</span>
+		}
+		
+<span class="fc" id="L87">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

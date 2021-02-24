@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.auth.controller</a> &gt; <span class="el_source">AuthController.java</span></div><h1>AuthController.java</h1><pre class="source lang-java linenums">package com.painscript.auth.controller;
+
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.painscript.auth.constants.AuthConstants;
+import com.painscript.auth.dto.AuditDTO;
+import com.painscript.auth.dto.ForgotPasswordDTO;
+import com.painscript.auth.dto.StatusDTO;
+import com.painscript.auth.dto.TokenDTO;
+import com.painscript.auth.dto.UserDTO;
+import com.painscript.auth.exception.PainscriptBusinessException;
+import com.painscript.auth.model.Role;
+import com.painscript.auth.model.Site;
+import com.painscript.auth.model.User;
+import com.painscript.auth.proxies.AuditLogProxy;
+import com.painscript.auth.service.AuthService;
+
+/**
+ * AuthController is the core controller of AuthMicro Service
+ * which do have business API's to perform routine operations.
+ * 
+ * @author Prolifics.
+ *
+ */
+@CrossOrigin(origins = &quot;*&quot;)
+@RestController
+@RequestMapping( value=&quot;/auth&quot; )
+<span class="fc" id="L59">public class AuthController implements AuthConstants {</span>
+
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L64">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+	
+	/**
+	 * The keycloak URL to be used as Identity Provider.
+	 */
+	@Value(&quot;${keycloak.auth.url}&quot;)
+	private String keycloakURL;
+	
+	/**
+	 * authService will be injected by Spring Framework.
+	 */
+	@Autowired
+	private AuthService authService;
+	
+	/**
+	 * The AuditLogProxy to log audit messages using open-feign client.
+	 * AuditLogProxy Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private AuditLogProxy auditProxy;
+	
+	@Autowired
+	private RestTemplate restTemplate;
+	
+	/**
+	 * processLogin method is used to validated users credentials and authorization
+	 * 
+	 * @param user
+	 * &lt;p&gt;Holds user login request&lt;/p&gt;
+	 */
+	@SuppressWarnings({ &quot;rawtypes&quot;, &quot;unchecked&quot; })
+	@RequestMapping(value = &quot;/login&quot;,method=RequestMethod.POST)
+	public  @ResponseBody Object processLogin(@RequestBody UserDTO user){
+<span class="fc" id="L97">		logger.debug(&quot;Keycloak URL : &quot;+keycloakURL);</span>
+<span class="fc" id="L98">	    HttpHeaders headers = new HttpHeaders();</span>
+<span class="fc" id="L99">	    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);</span>
+<span class="fc" id="L100">	    headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));</span>
+	    
+<span class="fc" id="L102">	    MultiValueMap&lt;String, String&gt; requestBody = new LinkedMultiValueMap&lt;String, String&gt;();</span>
+<span class="fc" id="L103">	    requestBody.add(CLIENT_ID, user.getClientId());</span>
+<span class="fc" id="L104">	    requestBody.add(GRANT_TYPE, &quot;password&quot;);</span>
+<span class="fc" id="L105">	    requestBody.add(SCOPE, &quot;openid&quot;);</span>
+<span class="fc" id="L106">	    requestBody.add(USERNAME_KEYCLOAK, user.getUserName());</span>
+<span class="fc" id="L107">	    requestBody.add(PASSWORD, user.getPassword());</span>
+	    
+<span class="fc" id="L109">	    AuditDTO auditDTO = new AuditDTO(user.getUserName(), AUDIT_MSG_LOGIN, user.getClientId(), AUDIT_TYPE_LOGIN);</span>
+<span class="fc" id="L110">	    logger.debug(&quot;Request : &quot; + auditDTO);</span>
+<span class="fc" id="L111">	    auditProxy.auditLog(auditDTO);</span>
+	    
+<span class="fc" id="L113">	    HttpEntity formEntity = new HttpEntity&lt;MultiValueMap&lt;String, String&gt;&gt;(requestBody, headers);</span>
+<span class="fc" id="L114">	    int attempts = 0;</span>
+<span class="fc" id="L115">	    boolean keepTrying =  true;</span>
+	    do{
+<span class="fc" id="L117">	    	attempts ++;</span>
+		    try {	
+<span class="fc" id="L119">		    	 logger.debug(&quot;Attempt # : &quot; + attempts);</span>
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">		    	 keepTrying = attempts &lt; 2; //Maximum Retry 2 times.</span>
+		    	//Perform the Authentication first from Identity Provider.
+<span class="fc" id="L122">		    	Map&lt;String,Object&gt; finalResponse = new HashMap&lt;String,Object&gt;(); </span>
+<span class="fc" id="L123">		    	ResponseEntity&lt;Object&gt; response = restTemplate.exchange(keycloakURL, HttpMethod.POST,formEntity, Object.class);</span>
+<span class="fc" id="L124">				logger.debug(&quot;Response : &quot; + response);</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">		    	if(response.getStatusCode() == HttpStatus.OK) {</span>
+		    		//Next query DB and fetch the details.
+<span class="fc" id="L127">		    		User userDetails = authService.getUserDetailsByUsername(user.getUserName());</span>
+<span class="fc" id="L128">		    		Role role = userDetails.getRole();</span>
+<span class="fc" id="L129">		    		String roleName = role.getRole();</span>
+		    		
+<span class="fc" id="L131">		    		validateAccountAndSiteStatus(finalResponse, userDetails, roleName);</span>
+		    		
+<span class="fc" id="L133">		    		finalResponse.put(CLIENT_ID, user.getClientId());</span>
+<span class="fc" id="L134">		    		ObjectMapper oMapper = new ObjectMapper();</span>
+<span class="fc" id="L135">		    		Map&lt;String, Object&gt; map = oMapper.convertValue(response.getBody(), Map.class);</span>
+<span class="fc" id="L136">		    		finalResponse.putAll(map);</span>
+<span class="fc" id="L137">		    		finalResponse.put(USERNAME,user.getUserName());</span>
+<span class="fc" id="L138">		    		finalResponse.put(FIRST_NAME,userDetails.getFirstName());</span>
+<span class="fc" id="L139">		    		finalResponse.put(EMAIL, userDetails.getEmail());</span>
+<span class="fc" id="L140">		    		finalResponse.put(USER_ID, userDetails.getId());</span>
+<span class="fc" id="L141">		    		finalResponse.put(DEVICE_ID, userDetails.getDeviceId());</span>
+<span class="fc" id="L142">		    		finalResponse.put(DEVICE_TYPE, userDetails.getDeviceType());</span>
+<span class="fc" id="L143">		    		finalResponse.put(DEVICE_TOKEN, userDetails.getDeviceToken());</span>
+<span class="fc" id="L144">		    		finalResponse.put(USER_ROLE, roleName);</span>
+		    		
+<span class="fc" id="L146">		    		Timestamp lastLoggedInTime = new java.sql.Timestamp(new Date().getTime());</span>
+<span class="fc" id="L147">		    		finalResponse.put(LAST_LOGGED_IN_TIME, userDetails.getLastLoggedinTime());</span>
+<span class="fc" id="L148">		    		authService.updateLastLoggedInTime(userDetails.getId(),lastLoggedInTime);</span>
+<span class="fc" id="L149">		    		finalResponse.remove(ID_TOKEN);</span>
+		    		//finalResponse.remove(&quot;refresh_token&quot;);
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">		    	}else if(response.getStatusCode() == HttpStatus.UNAUTHORIZED) {</span>
+<span class="fc" id="L152">		    		keepTrying = false;</span>
+<span class="fc" id="L153">		    		throw new HttpServerErrorException(HttpStatus.UNAUTHORIZED);</span>
+		    	}
+<span class="fc" id="L155">		    	keepTrying = false; //No Exceptions received. We are good!</span>
+<span class="fc" id="L156">		    	return ResponseEntity.status(HttpStatus.OK).body(finalResponse);</span>
+<span class="fc" id="L157">		    } catch(PainscriptBusinessException e) {</span>
+<span class="fc" id="L158">		    	throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L159">		    }catch(HttpStatusCodeException e) {</span>
+<span class="fc" id="L160">		    	throw new PainscriptBusinessException(&quot;ERR_&quot;+e.getRawStatusCode(), e.getStatusText());</span>
+<span class="nc" id="L161">		    }catch(Exception e) {</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		    	if(!keepTrying) throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+		    }
+<span class="nc bnc" id="L164" title="All 2 branches missed.">	    }while(keepTrying);</span>
+<span class="nc" id="L165">		return null;</span>
+	}
+
+	private void validateAccountAndSiteStatus(Map&lt;String, Object&gt; finalResponse, User userDetails, String roleName) {
+		
+		//Validate Account Status
+<span class="pc bpc" id="L171" title="1 of 4 branches missed.">		if(roleName.equals(PATIENTS) &amp;&amp; !userDetails.getStatus().equals(ACTIVE)) {</span>
+<span class="fc" id="L172">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Your account is Inactive. Please contact your Physician.&quot;);</span>
+<span class="fc bfc" id="L173" title="All 4 branches covered.">		}else if((roleName.equals(PHYSICIANS) || roleName.equals(MEDICAL_STAFFS)) </span>
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">				&amp;&amp; !userDetails.getStatus().equals(ACTIVE)) {</span>
+<span class="nc" id="L175">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Your account is Inactive. Please contact the Site Administrator.&quot;);</span>
+<span class="pc bpc" id="L176" title="1 of 4 branches missed.">		}else if(roleName.equals(SITE_ADMINS) &amp;&amp; !userDetails.getStatus().equals(ACTIVE)) {</span>
+<span class="nc" id="L177">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Your account is Inactive. Please contact the Administrator.&quot;);</span>
+		}
+		
+		//Validate Site Status
+<span class="pc bpc" id="L181" title="1 of 6 branches missed.">		if(roleName.equals(PHYSICIANS) || roleName.equals(MEDICAL_STAFFS) || roleName.equals(PATIENTS)) {</span>
+<span class="fc" id="L182">			Site site = authService.getSiteDetailsByUserId(userDetails.getId(),roleName);</span>
+<span class="pc bpc" id="L183" title="5 of 6 branches missed.">			if(!site.getStatus().equals(ACTIVE) &amp;&amp; (roleName.equals(PHYSICIANS) || roleName.equals(MEDICAL_STAFFS))) {</span>
+<span class="nc" id="L184">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Your site is inactive. Please contact the Site Administrator.&quot;);</span>
+<span class="pc bpc" id="L185" title="1 of 2 branches missed.">			}else if(!site.getStatus().equals(ACTIVE)) {</span>
+<span class="nc" id="L186">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Your site is inactive. Please contact your Physician.&quot;);</span>
+			}
+<span class="fc" id="L188">			finalResponse.put(SITE_ID, site.getId());</span>
+<span class="fc" id="L189">			finalResponse.put(SITE_NAME, site.getName());</span>
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">		}else if(roleName.equals(SITE_ADMINS)) {</span>
+<span class="fc" id="L191">			Site site = authService.getSiteDetailsBySiteAdmin(userDetails.getId());</span>
+<span class="pc bpc" id="L192" title="1 of 2 branches missed.">			if(!site.getStatus().equals(ACTIVE)) {</span>
+<span class="nc" id="L193">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Your site is inactive. Please contact the Administrator.&quot;);</span>
+			}
+<span class="fc" id="L195">			finalResponse.put(SITE_ID, site.getId());</span>
+<span class="fc" id="L196">			finalResponse.put(SITE_NAME, site.getName());</span>
+		}
+<span class="fc" id="L198">	}</span>
+	
+	/**
+	 * refreshToken is used to refresh the access token of the client.
+	 * 
+	 * @param token
+	 * 	&lt;p&gt;Object encapsulating current Token details.&lt;/p&gt;
+	 * @return 
+	 * 	&lt;p&gt;The renewed Token Summary.&lt;/p&gt;
+	 */	
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	@RequestMapping(value = &quot;/refresh-token&quot;,method=RequestMethod.PUT)
+	public  @ResponseBody Object refreshToken(@RequestBody TokenDTO token){
+<span class="nc" id="L211">		RestTemplate restTemplate = new RestTemplate();</span>
+<span class="nc" id="L212">	    HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L213">	    headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);</span>
+	    
+<span class="nc" id="L215">		MultiValueMap&lt;String, String&gt; requestBody = new LinkedMultiValueMap&lt;String, String&gt;();</span>
+<span class="nc" id="L216">	    requestBody.add(CLIENT_ID, token.getClientId());</span>
+<span class="nc" id="L217">	    requestBody.add(GRANT_TYPE, REFRESH_TOKEN);</span>
+<span class="nc" id="L218">	    requestBody.add(REFRESH_TOKEN,token.getRefreshToken());</span>
+	    
+<span class="nc" id="L220">	    HttpEntity formEntity = new HttpEntity&lt;MultiValueMap&lt;String, String&gt;&gt;(requestBody, headers);	    </span>
+<span class="nc" id="L221">		return restTemplate.exchange(keycloakURL, HttpMethod.POST,formEntity, Object.class);</span>
+	}
+	
+	/**
+	 * getForgotPassword 
+	 */
+	@RequestMapping(value = &quot;/forgot-password/{userName}&quot;,method=RequestMethod.POST)
+	public StatusDTO forgotPassword(@PathVariable String userName,@RequestBody Map&lt;String, String&gt; body){
+<span class="fc" id="L229">		String encodedURL = body.get(&quot;url&quot;);</span>
+		try {
+<span class="fc" id="L231">			String decodedURL = java.net.URLDecoder.decode(encodedURL, StandardCharsets.UTF_8.name());	</span>
+<span class="fc" id="L232">			authService.forgotPassword(userName,decodedURL);</span>
+<span class="nc" id="L233">		} catch (UnsupportedEncodingException e) {</span>
+<span class="nc" id="L234">			logger.debug(&quot;Error occured while decoding url.&quot;);</span>
+<span class="nc" id="L235">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Error occured while decoding url.&quot;);</span>
+<span class="fc" id="L236">		}</span>
+<span class="fc" id="L237">		StatusDTO statusDTO = new StatusDTO(&quot;SUC_000&quot;,&quot;A link has been sent to your registered email to reset your password.&quot;);</span>
+<span class="fc" id="L238">		return statusDTO;</span>
+	}
+	
+	/**
+	 * verifyToken will verify the the token received from forgot password scenario.
+	 * @return status
+	 */
+	@RequestMapping(value = &quot;/verify-token&quot;,method=RequestMethod.POST)
+	public StatusDTO verifyToken(@RequestParam String token){
+<span class="fc" id="L247">		Integer userId = authService.verifyToken(token);</span>
+<span class="fc" id="L248">		String status = &quot;Invalid token recieved.&quot;;</span>
+<span class="pc bpc" id="L249" title="1 of 2 branches missed.">		if(userId != null)</span>
+<span class="fc" id="L250">			status = &quot;OK&quot;;</span>
+<span class="fc" id="L251">		StatusDTO statusDTO = new StatusDTO(&quot;SUC_000&quot;,status);</span>
+<span class="fc" id="L252">		statusDTO.setReturnId(userId);</span>
+<span class="fc" id="L253">		return statusDTO;</span>
+	}
+	
+	/**
+	 * resetPassword will update the existing password.
+	 * @param forgotPasswordDTO
+	 * @param userId
+	 * @return status
+	 */
+	
+	@RequestMapping(value = &quot;/reset-password/{userId}&quot;,method=RequestMethod.PUT)
+	public StatusDTO resetPassword(@RequestBody ForgotPasswordDTO forgotPasswordDTO, @PathVariable Integer userId){
+<span class="fc" id="L265">		authService.updatePassword(forgotPasswordDTO,userId);</span>
+<span class="fc" id="L266">		return new StatusDTO(&quot;SUC_000&quot;,&quot;Password updated successfully.&quot;);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

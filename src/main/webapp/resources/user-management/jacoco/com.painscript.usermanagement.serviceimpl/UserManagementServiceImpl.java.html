@@ -1,0 +1,1497 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserManagementServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">user-management-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.usermanagement.serviceimpl</a> &gt; <span class="el_source">UserManagementServiceImpl.java</span></div><h1>UserManagementServiceImpl.java</h1><pre class="source lang-java linenums">package com.painscript.usermanagement.serviceimpl;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.PersistenceUnit;
+
+import org.apache.commons.lang3.time.DateUtils;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.painscript.usermanagement.constants.UserManagementConstants;
+import com.painscript.usermanagement.dto.ChangePasswordDTO;
+import com.painscript.usermanagement.dto.EmailDTO;
+import com.painscript.usermanagement.dto.KeyValueDTO;
+import com.painscript.usermanagement.dto.LicenseReportDTO;
+import com.painscript.usermanagement.dto.PushNotificationRequestDTO;
+import com.painscript.usermanagement.dto.RegisterSiteDTO;
+import com.painscript.usermanagement.dto.SiteDTO;
+import com.painscript.usermanagement.dto.UserDTO;
+import com.painscript.usermanagement.exception.PainscriptBusinessException;
+import com.painscript.usermanagement.model.Disorder;
+import com.painscript.usermanagement.model.LicenseAssignment;
+import com.painscript.usermanagement.model.LicenseWorkflow;
+import com.painscript.usermanagement.model.Notification;
+import com.painscript.usermanagement.model.PatientDisorder;
+import com.painscript.usermanagement.model.PhysicianSpeciality;
+import com.painscript.usermanagement.model.Role;
+import com.painscript.usermanagement.model.Site;
+import com.painscript.usermanagement.model.SitePatient;
+import com.painscript.usermanagement.model.SiteUser;
+import com.painscript.usermanagement.model.Speciality;
+import com.painscript.usermanagement.model.User;
+import com.painscript.usermanagement.proxies.UtilProxy;
+import com.painscript.usermanagement.repository.LicenseAssignmentRepository;
+import com.painscript.usermanagement.repository.LicenseWorkflowRepository;
+import com.painscript.usermanagement.repository.NotificationRepository;
+import com.painscript.usermanagement.repository.PatientDisorderRepository;
+import com.painscript.usermanagement.repository.PhysicianSpecialityRepository;
+import com.painscript.usermanagement.repository.SitePatientRepository;
+import com.painscript.usermanagement.repository.SiteRepository;
+import com.painscript.usermanagement.repository.SiteUserRepository;
+import com.painscript.usermanagement.repository.UserManagementRepository;
+import com.painscript.usermanagement.repository.UserRepository;
+import com.painscript.usermanagement.service.UserManagementService;
+
+/**
+ * UserManagementServiceImpl : Implementation class of UserManagementService.
+ * 
+ * @author Prolifics
+ *
+ */
+@Service
+<span class="fc" id="L70">public class UserManagementServiceImpl implements UserManagementService, UserManagementConstants{</span>
+
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L75">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+
+	/**
+	 * UserRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private UserRepository userRepository;
+
+	/**
+	 * SiteRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private SiteRepository siteRepository;
+
+	/**
+	 * SitePatientRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private SitePatientRepository sitePatientRepository;
+
+	/**
+	 * SiteUserRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private SiteUserRepository siteUserRepository;
+
+	/**
+	 * LicenseAssignmentRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private LicenseAssignmentRepository licenseAssignmentRepository;
+
+	/**
+	 * LicenseWorkflowRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private LicenseWorkflowRepository licenseWorkflowRepository;
+
+	/**
+	 * PatientDisorderRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private PatientDisorderRepository patientDisorderRepository;
+
+	/**
+	 * PhysicianSpecialityRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private PhysicianSpecialityRepository physicianSpecialityRepository;
+
+	/**
+	 * UserManagementRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private UserManagementRepository userManagementRepository;
+
+	@Autowired
+	private NotificationRepository notificationRepo;
+
+	/**
+	 * The UtilProxy to call utility methods using open-feign client.
+	 * UtilProxy Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private UtilProxy utilProxy;
+
+	@Value(&quot;${spring.profiles.active}&quot;)
+	private String activeProfile;
+	
+	@Value(&quot;${send.actual.email}&quot;)
+	private boolean sendToActualEmail;
+
+	/**
+	 * EntityManager instance is injected by Spring Framework.
+	 * 
+	 * This is used to manage all the Persistent entities
+	 * defined in the System.
+	 */
+
+	@PersistenceUnit
+	private EntityManagerFactory entityManagerFactory;
+
+	private static final float PATIENT_PRICE = 0.0f; //TODO Remove it later
+
+	/**
+	 * getUserProfile retrieves user profile information
+	 * 
+	 * @param userId
+	 * &lt;p&gt; userId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; User profile information.&lt;/p&gt;
+	 */
+	@Override
+	public UserDTO getUserProfile(Integer userId) {
+<span class="fc" id="L169">		UserDTO userProfile = new UserDTO();</span>
+<span class="fc" id="L170">		User userEntity = userRepository.findById(userId).orElse(null);</span>
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">		if(userEntity!=null) {</span>
+<span class="fc" id="L172">			BeanUtils.copyProperties(userEntity, userProfile);</span>
+			//Set unnecessary properties to null
+<span class="fc" id="L174">			userProfile.setPassword(null);</span>
+<span class="fc" id="L175">			userProfile.setCreatedBy(null);</span>
+<span class="fc" id="L176">			userProfile.setUpdatedBy(null);</span>
+			//set role
+<span class="fc" id="L178">			Role roleEntity = userEntity.getRole();</span>
+<span class="fc" id="L179">			String roleName = roleEntity.getRole();</span>
+<span class="fc" id="L180">			userProfile.setRoleId(roleEntity.getId());</span>
+<span class="fc" id="L181">			userProfile.setRoleName(roleName);</span>
+<span class="fc" id="L182">			logger.debug(&quot;Role:&quot;+roleName+&quot;(&quot;+roleEntity.getId()+&quot;)&quot;);</span>
+			//set specialties for physicians
+<span class="pc bpc" id="L184" title="1 of 4 branches missed.">			if(roleName.equals(PHYSICIANS)||roleName.equals(MEDICAL_STAFFS)) {</span>
+<span class="fc" id="L185">				setPhysicianSpecialties(userProfile, userEntity);</span>
+<span class="fc bfc" id="L186" title="All 2 branches covered.">			}else if(roleName.equals(PATIENTS)) {</span>
+<span class="fc" id="L187">				setPatientDisorders(userProfile, userEntity);</span>
+<span class="fc" id="L188">				List&lt;UserDTO&gt; physicians = getPhysiciansOfPatient(userId);</span>
+<span class="pc bpc" id="L189" title="2 of 4 branches missed.">				if(physicians!=null &amp;&amp; physicians.size() &gt; 0) {</span>
+<span class="fc" id="L190">					userProfile.setPhysicianId(physicians.get(0).getId());</span>
+				}
+<span class="fc" id="L192">			}else {</span>
+<span class="fc" id="L193">				userProfile.setDisorders(null);</span>
+<span class="fc" id="L194">				userProfile.setSpecialities(null);</span>
+			}
+<span class="fc" id="L196">		}else {</span>
+<span class="nc" id="L197">			logger.error(&quot;Invalid User Id:&quot;+userId);</span>
+<span class="nc" id="L198">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid User Id.&quot;);</span>
+		}
+<span class="fc" id="L200">		return 	userProfile;</span>
+	}
+
+	/**
+	 * setPatientDisorders retrieves the disorders of a patient
+	 * @param userProfile
+	 * &lt;p&gt;data transfer object of user&lt;/p&gt;
+	 * @param userEntity
+	 * &lt;p&gt;user entity&lt;/p&gt;
+	 */
+	private void setPatientDisorders(UserDTO userProfile, User userEntity) {
+<span class="fc" id="L211">		logger.debug(&quot;Patient id:&quot;+userProfile.getId());</span>
+<span class="fc" id="L212">		List&lt;KeyValueDTO&gt; disorders = new ArrayList&lt;KeyValueDTO&gt;();</span>
+<span class="fc" id="L213">		List&lt;PatientDisorder&gt; disordersList = userEntity.getPatientDisorders();</span>
+<span class="pc bpc" id="L214" title="1 of 4 branches missed.">		if(disordersList!=null &amp;&amp; disordersList.size() &gt; 0) {</span>
+<span class="fc" id="L215">			disordersList.forEach((item) -&gt; {</span>
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">				if(item.getStatus().equals(ACTIVE)){</span>
+<span class="fc" id="L217">					KeyValueDTO keyValueDTO = new KeyValueDTO();</span>
+<span class="fc" id="L218">					Disorder disorder = item.getDisorder();</span>
+<span class="fc" id="L219">					keyValueDTO.setId(disorder.getId());</span>
+<span class="fc" id="L220">					keyValueDTO.setName(disorder.getDisorderName());</span>
+<span class="fc" id="L221">					keyValueDTO.setValue(disorder.getDescription());</span>
+<span class="fc" id="L222">					disorders.add(keyValueDTO);</span>
+				}
+<span class="fc" id="L224">			});</span>
+		}
+<span class="fc" id="L226">		logger.debug(&quot;Patient disorders:&quot;+disorders.size());</span>
+<span class="fc" id="L227">		userProfile.setDisorders(disorders);</span>
+<span class="fc" id="L228">		userProfile.setSpecialities(null);</span>
+<span class="fc" id="L229">	}</span>
+
+	/**
+	 * setPhysicianSpecialities retrieves the specialities of physicians
+	 * @param userProfile
+	 * &lt;p&gt;data transfer object of user&lt;/p&gt;
+	 * @param userEntity
+	 * &lt;p&gt;user entity&lt;/p&gt;
+	 */
+	public void setPhysicianSpecialties(UserDTO userProfile, User userEntity) {
+<span class="fc" id="L239">		logger.debug(&quot;Physician id:&quot;+userProfile.getId());</span>
+<span class="fc" id="L240">		List&lt;KeyValueDTO&gt; specialities = new ArrayList&lt;KeyValueDTO&gt;();</span>
+<span class="fc" id="L241">		List&lt;PhysicianSpeciality&gt; specialitiesList = userEntity.getPhysicianSpecialities();</span>
+<span class="pc bpc" id="L242" title="1 of 4 branches missed.">		if(specialitiesList!=null &amp;&amp; specialitiesList.size() &gt; 0) {</span>
+<span class="fc" id="L243">			specialitiesList.forEach((item)-&gt;{</span>
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">				if(item.getStatus().equals(ACTIVE)) {</span>
+<span class="fc" id="L245">					KeyValueDTO keyValueDTO = new KeyValueDTO();</span>
+<span class="fc" id="L246">					Speciality speciality = item.getSpeciality();</span>
+<span class="fc" id="L247">					keyValueDTO.setId(speciality.getId());</span>
+<span class="fc" id="L248">					keyValueDTO.setName(speciality.getSpecialityName());</span>
+<span class="fc" id="L249">					keyValueDTO.setValue(speciality.getSpecialityCode());</span>
+<span class="fc" id="L250">					specialities.add(keyValueDTO);</span>
+				}
+<span class="fc" id="L252">			});</span>
+		}
+<span class="fc" id="L254">		logger.debug(&quot;Specialties:&quot;+specialities.size());</span>
+<span class="fc" id="L255">		userProfile.setSpecialities(specialities);</span>
+<span class="fc" id="L256">		userProfile.setDisorders(null);</span>
+<span class="fc" id="L257">	}</span>
+
+
+	/**
+	 * getPhysicians returns list of physician belongs to particular patient
+	 * 
+	 * @param patientId
+	 * &lt;p&gt; patientId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; returns list of physician.&lt;/p&gt;
+	 */
+	public List&lt;UserDTO&gt; getPhysiciansOfPatient(Integer patientId)
+	{
+<span class="fc" id="L270">		List&lt;SitePatient&gt; patients = sitePatientRepository.findByPatientIdAndStatus(patientId,ACTIVE);</span>
+<span class="pc bpc" id="L271" title="2 of 4 branches missed.">		if(patients!=null &amp;&amp; patients.size()&gt;0)</span>
+<span class="fc" id="L272">			return ((patients).stream().map(this::getPhysician).collect(Collectors.toList()));</span>
+		else {
+<span class="nc" id="L274">			logger.debug(&quot;Invalid Patient Id.&quot;+patientId);</span>
+<span class="nc" id="L275">			throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Invalid Patient Id.&quot;);</span>
+		}
+			
+	}
+
+	/**
+	 * getPhysician retrieves physician of a patient  
+	 * @param patient
+	 * @return physician details
+	 */
+	public UserDTO getPhysician(SitePatient patient)
+	{
+<span class="fc" id="L287">		UserDTO userDTO = new UserDTO();</span>
+<span class="fc" id="L288">		User userEntity = patient.getPhysician();</span>
+<span class="fc" id="L289">		BeanUtils.copyProperties(userEntity, userDTO);</span>
+<span class="fc" id="L290">		logger.debug(&quot;Physician id:&quot;+userEntity.getId());</span>
+<span class="fc" id="L291">		Site site = patient.getSite();</span>
+<span class="fc" id="L292">		User siteAdmin = site.getSiteAdmin();</span>
+		//Needs to pass siteAdmin phone number instead of physician.
+<span class="fc" id="L294">		userDTO.setPhone(siteAdmin.getPhone());</span>
+<span class="fc" id="L295">		userDTO.setSiteId(site.getId());</span>
+<span class="fc" id="L296">		logger.debug(&quot;Site id:&quot;+site.getId());</span>
+<span class="fc" id="L297">		userDTO.setPassword(null);</span>
+<span class="fc" id="L298">		userDTO.setCreatedBy(null);</span>
+<span class="fc" id="L299">		userDTO.setUpdatedBy(null);</span>
+
+<span class="fc" id="L301">		Role role = userEntity.getRole();</span>
+<span class="fc" id="L302">		userDTO.setRoleId(role.getId());</span>
+<span class="fc" id="L303">		userDTO.setRoleName(role.getRole());</span>
+<span class="fc" id="L304">		setPhysicianSpecialties(userDTO, userEntity);</span>
+
+<span class="fc" id="L306">		return userDTO;</span>
+	}
+
+
+	/**
+	 * createUser method is used to create a new user.
+	 * 
+	 * @param userRequest
+	 * 	&lt;p&gt;User data to create new user.&lt;/p&gt;
+	 * @param role
+	 * 	&lt;p&gt;Role of the user.&lt;/p&gt;
+	 */
+	@Override
+	public Integer createUser(UserDTO userRequest, String role) {
+<span class="fc" id="L320">		Integer userId = null;</span>
+<span class="fc" id="L321">		boolean isValidRequest = checkAllValidations(userRequest,role);</span>
+<span class="pc bpc" id="L322" title="1 of 2 branches missed.">		if(isValidRequest) {</span>
+<span class="fc" id="L323">			User entity = new User();</span>
+			//Setting role
+<span class="fc" id="L325">			Role roleEntity = new Role();</span>
+<span class="fc" id="L326">			roleEntity.setId(getRoleId(role));</span>
+<span class="fc" id="L327">			entity.setRole(roleEntity);</span>
+			//Setting Password
+<span class="fc" id="L329">			String password = UserManagementService.generateDefaultPassword();</span>
+<span class="fc" id="L330">			userRequest.setPassword(password);</span>
+			//Copying other attributes
+<span class="fc" id="L332">			BeanUtils.copyProperties(userRequest, entity);</span>
+<span class="fc" id="L333">			entity.setPassword(getEncryptedText(password));</span>
+<span class="fc" id="L334">			entity.setCreatedDate(new Date());</span>
+<span class="fc" id="L335">			entity.setStatus(ACTIVE);</span>
+			//Saving user entity
+<span class="fc" id="L337">			entity = userRepository.save(entity);</span>
+<span class="fc" id="L338">			logger.debug(&quot;Role: &quot;+role);</span>
+<span class="fc" id="L339">			userId = entity.getId();</span>
+<span class="fc bfc" id="L340" title="All 2 branches covered.">			if(role.equals(PATIENTS)) {</span>
+				//Link disorders with patient
+<span class="pc bpc" id="L342" title="2 of 4 branches missed.">				if(userRequest.getDisorders()!=null &amp;&amp; userRequest.getDisorders().size() &gt; 0) {</span>
+<span class="fc" id="L343">					addPatientDisorders(userRequest, entity);</span>
+				}
+				//Link patient with physician
+<span class="fc" id="L346">				addPatientToSiteAndPhysician(userRequest, entity);</span>
+				//Assign License to Patient
+<span class="fc" id="L348">				assignLicenseToPatient(userRequest, entity);</span>
+<span class="pc bpc" id="L349" title="1 of 4 branches missed.">			}else if(role.equals(PHYSICIANS) || role.equals(MEDICAL_STAFFS)) {</span>
+				//Link specialties with physician
+<span class="pc bpc" id="L351" title="2 of 4 branches missed.">				if(userRequest.getSpecialities()!=null &amp;&amp; userRequest.getSpecialities().size() &gt; 0) {</span>
+<span class="fc" id="L352">					addPhysicianSpecialties(userRequest, entity);</span>
+				}
+<span class="fc" id="L354">				addPhysicianToSite(userRequest, entity);</span>
+			}
+
+			//After successfully onboarding a user, notify them using email
+<span class="fc" id="L358">			notifyUserByEmail(userRequest, role);</span>
+		}
+<span class="fc" id="L360">		return userId;</span>
+	}
+
+	/**
+	 * notifyUserByEmail will send the email to the user
+	 * @param userRequest
+	 * &lt;p&gt;data transfer object of user&lt;/p&gt; 
+	 * @param role
+	 * &lt;p&gt; role of user&lt;/p&gt;
+	 */
+	private void notifyUserByEmail(UserDTO userRequest, String role) {
+<span class="fc" id="L371">		EmailDTO email = new EmailDTO();</span>
+<span class="fc" id="L372">		email.setEmailAddress(userRequest.getEmail());</span>
+<span class="pc bpc" id="L373" title="1 of 2 branches missed.">		boolean useHardcodedEmail = !sendToActualEmail;</span>
+<span class="pc bpc" id="L374" title="5 of 6 branches missed.">		if(activeProfile!=null &amp;&amp; activeProfile.equalsIgnoreCase(&quot;qa&quot;) &amp;&amp; useHardcodedEmail)</span>
+<span class="nc" id="L375">			email.setEmailAddress(&quot;babji.pedarla@prolifics.com&quot;);//TODO: needs to be changed later</span>
+<span class="pc bpc" id="L376" title="5 of 6 branches missed.">		else if(activeProfile!=null &amp;&amp; activeProfile.equalsIgnoreCase(&quot;dev&quot;) &amp;&amp; useHardcodedEmail)</span>
+<span class="nc" id="L377">			email.setEmailAddress(&quot;babji.pedarla@prolifics.com&quot;);//TODO: needs to be changed later</span>
+<span class="fc bfc" id="L378" title="All 2 branches covered.">		if(role.equals(PATIENTS)) {</span>
+<span class="fc" id="L379">			email.setSubject(&quot;Password for Painscript Application Login&quot;);</span>
+<span class="fc" id="L380">			email.setTemplate(&quot;onboard-patient&quot;);</span>
+<span class="fc" id="L381">			Map&lt;String,Object&gt; templateInputs = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L382">			templateInputs.put(&quot;password&quot;, userRequest.getPassword());</span>
+<span class="fc" id="L383">			email.setTemplateInputs(templateInputs);</span>
+<span class="fc bfc" id="L384" title="All 2 branches covered.">		}else if(role.equals(PHYSICIANS)) {</span>
+<span class="fc" id="L385">			email.setSubject(&quot;Password for Painscript Application Login&quot;);</span>
+<span class="fc" id="L386">			email.setTemplate(&quot;onboard-physician&quot;);</span>
+<span class="fc" id="L387">			Map&lt;String,Object&gt; templateInputs = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L388">			templateInputs.put(&quot;password&quot;, userRequest.getPassword());</span>
+<span class="fc" id="L389">			email.setTemplateInputs(templateInputs);</span>
+<span class="pc bpc" id="L390" title="1 of 2 branches missed.">		}else if(role.equals(MEDICAL_STAFFS)) {</span>
+<span class="nc" id="L391">			email.setSubject(&quot;Password for Painscript Application Login&quot;);</span>
+<span class="nc" id="L392">			email.setTemplate(&quot;onboard-assistant&quot;);</span>
+<span class="nc" id="L393">			Map&lt;String,Object&gt; templateInputs = new HashMap&lt;String, Object&gt;();</span>
+<span class="nc" id="L394">			templateInputs.put(&quot;password&quot;, userRequest.getPassword());</span>
+<span class="nc" id="L395">			email.setTemplateInputs(templateInputs);</span>
+<span class="pc bpc" id="L396" title="1 of 2 branches missed.">		}else if(role.equals(SITE_ADMINS)) {</span>
+<span class="fc" id="L397">			email.setSubject(&quot;Password for Painscript Application Login&quot;);</span>
+<span class="fc" id="L398">			email.setTemplate(&quot;onboard-siteadmin&quot;);</span>
+<span class="fc" id="L399">			Map&lt;String,Object&gt; templateInputs = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L400">			templateInputs.put(&quot;password&quot;, userRequest.getPassword());</span>
+<span class="fc" id="L401">			email.setTemplateInputs(templateInputs);</span>
+		}
+<span class="fc" id="L403">		logger.debug(&quot;Email request: &quot;+email);</span>
+<span class="fc" id="L404">		sendEmailUsingTemplate(email);</span>
+<span class="fc" id="L405">	}</span>
+
+	/**
+	 * sendEmailUsingTemplate will send the email details to util micro service
+	 * @param email
+	 * &lt;p&gt;data transfer object of email&lt;/p&gt;
+	 */
+	private void sendEmailUsingTemplate(EmailDTO email) {
+<span class="fc" id="L413">		utilProxy.sendEmailUsingTemplate(email);</span>
+<span class="fc" id="L414">	}</span>
+
+	/**
+	 * assignLicenseToPatient will assign the license to the patient
+	 * @param userRequest
+	 * @param userEntity
+	 */
+	private void assignLicenseToPatient(UserDTO userRequest, User userEntity) {
+<span class="fc" id="L422">		LicenseAssignment licenseAssignment = getAvailableLicense(userRequest.getSiteId());</span>
+<span class="fc" id="L423">		licenseAssignment.setPatientId(userEntity.getId());</span>
+<span class="fc" id="L424">		licenseAssignment.setPricePatient(PATIENT_PRICE);</span>
+<span class="fc" id="L425">		licenseAssignment.setSalesRep(null);</span>
+<span class="fc" id="L426">		licenseAssignment.setCreatedBy(userRequest.getCreatedBy());</span>
+<span class="fc" id="L427">		licenseAssignment.setCreatedDate(new Date());</span>
+<span class="fc" id="L428">		licenseAssignment.setStatus(ASSIGNED);</span>
+		//Record this in workflow table before persisting it in actual table.
+<span class="fc" id="L430">		logger.debug(&quot;Patient id&quot;+userRequest.getId()+&quot;\nLicense number: &quot;+licenseAssignment.getLicenseNumber());</span>
+<span class="fc" id="L431">		recordLicenseActivity(licenseAssignment,userRequest.getPhysicianId());</span>
+<span class="fc" id="L432">		licenseAssignmentRepository.save(licenseAssignment);</span>
+		
+<span class="fc" id="L434">	}</span>
+
+	/**
+	 * recordLiceseActivity will record every activity performed on License
+	 * @param licenseAssignment
+	 * @param physicianId
+	 */
+	private void recordLicenseActivity(LicenseAssignment licenseAssignment,Integer physicianId) {
+<span class="fc" id="L442">		LicenseWorkflow workflowEntity = new LicenseWorkflow();</span>
+<span class="fc" id="L443">		workflowEntity.setLicenseNumber(licenseAssignment.getLicenseNumber());</span>
+<span class="fc" id="L444">		workflowEntity.setDescription(null);</span>
+<span class="fc" id="L445">		workflowEntity.setPatientId(licenseAssignment.getPatientId());</span>
+<span class="fc" id="L446">		workflowEntity.setPhysicianId(physicianId);</span>
+<span class="fc" id="L447">		workflowEntity.setSiteId(licenseAssignment.getSiteId());</span>
+<span class="fc" id="L448">		workflowEntity.setCreatedBy(licenseAssignment.getCreatedBy());</span>
+<span class="fc" id="L449">		workflowEntity.setCreatedDate(new Date());</span>
+<span class="fc" id="L450">		workflowEntity.setStatus(licenseAssignment.getStatus());</span>
+<span class="fc" id="L451">		logger.debug(&quot;\nLicenseNumber: &quot;+ workflowEntity.getLicenseNumber()+&quot;\nPatient id&quot;+workflowEntity.getPatientId()+</span>
+<span class="fc" id="L452">				&quot;\nPhysician id:&quot;+workflowEntity.getPhysicianId()+&quot;\nSite id:&quot;+workflowEntity.getSiteId());</span>
+<span class="fc" id="L453">		licenseWorkflowRepository.save(workflowEntity);</span>
+<span class="fc" id="L454">	}</span>
+
+	/**
+	 * getAvailableLicense will retrieves the availability of licenses 
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @return
+	 */
+	private LicenseAssignment getAvailableLicense(Integer siteId) {
+<span class="fc" id="L463">		Site site = new Site();</span>
+<span class="fc" id="L464">		site.setId(siteId);</span>
+<span class="fc" id="L465">		List&lt;LicenseAssignment&gt; licenses = licenseAssignmentRepository.findBySiteAndPatientOrderByLicenseNumber(site,null);</span>
+<span class="pc bpc" id="L466" title="2 of 4 branches missed.">		if(licenses!=null &amp;&amp; licenses.size() &gt; 0) {</span>
+<span class="fc" id="L467">			return licenses.get(0);</span>
+		}else {
+<span class="nc" id="L469">			logger.debug(&quot;Not enough licenses with site id = &quot;+siteId);</span>
+<span class="nc" id="L470">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Not enough licenses with site id = &quot;+siteId);</span>
+		}
+	}
+
+	/**
+	 * addPhysicianToSite will add physician to the particular site
+	 * @param userRequest
+	 * @param userEntity
+	 */
+	private void addPhysicianToSite(UserDTO userRequest, User userEntity) {
+<span class="fc" id="L480">		SiteUser siteUser = new SiteUser();</span>
+<span class="fc" id="L481">		siteUser.setSiteId(userRequest.getSiteId());</span>
+<span class="fc" id="L482">		siteUser.setPhysicianId(userEntity.getId());</span>
+<span class="fc" id="L483">		siteUser.setCreatedBy(userRequest.getCreatedBy());</span>
+<span class="fc" id="L484">		siteUser.setCreatedDate(new Date());</span>
+<span class="fc" id="L485">		siteUser.setStatus(ACTIVE);</span>
+<span class="fc" id="L486">		logger.debug(&quot;\nSite id:&quot;+userRequest.getSiteId()+&quot;\nPhysician id:&quot;+userRequest.getPhysicianId());</span>
+<span class="fc" id="L487">		siteUserRepository.save(siteUser);</span>
+<span class="fc" id="L488">	}</span>
+
+	/**
+	 * addPatientToSiteAndPhysician will assign the patient to the physician of a particular site
+	 * @param userRequest
+	 * @param userEntity
+	 */
+	private void addPatientToSiteAndPhysician(UserDTO userRequest, User userEntity) {
+<span class="fc" id="L496">		SitePatient sitePatient = new SitePatient();</span>
+<span class="fc" id="L497">		sitePatient.setPhysicianId(userRequest.getPhysicianId());</span>
+<span class="fc" id="L498">		sitePatient.setSiteId(userRequest.getSiteId());</span>
+<span class="fc" id="L499">		sitePatient.setPatientId(userEntity.getId());</span>
+<span class="fc" id="L500">		sitePatient.setCreatedBy(userRequest.getCreatedBy());</span>
+<span class="fc" id="L501">		sitePatient.setCreatedDate(new Date());</span>
+<span class="fc" id="L502">		sitePatient.setStatus(ACTIVE);</span>
+<span class="fc" id="L503">		logger.debug(&quot;\nPhysician id:&quot;+userRequest.getPhysicianId()+&quot;\nSite id:&quot;+userRequest.getSiteId()+&quot;\nPatient id:&quot;+userRequest.getId());</span>
+<span class="fc" id="L504">		sitePatientRepository.save(sitePatient);</span>
+<span class="fc" id="L505">	}</span>
+
+	/**
+	 * addPhysicianSpecialties maps specialties to a physician.
+	 * 
+	 * @param userRequest
+	 * @param userEntity
+	 */
+	private void addPhysicianSpecialties(UserDTO userRequest, User userEntity) {
+<span class="fc bfc" id="L514" title="All 2 branches covered.">		for (KeyValueDTO specialityItem : userRequest.getSpecialities()) {</span>
+<span class="fc" id="L515">			PhysicianSpeciality physicianSpeciality = new PhysicianSpeciality();</span>
+<span class="fc" id="L516">			physicianSpeciality.setPhysicianId(userEntity.getId());</span>
+<span class="fc" id="L517">			physicianSpeciality.setSpecialityId(specialityItem.getId());;</span>
+<span class="fc" id="L518">			physicianSpeciality.setCreatedBy(userRequest.getCreatedBy());</span>
+<span class="fc" id="L519">			physicianSpeciality.setCreatedDate(new Date());</span>
+<span class="fc" id="L520">			physicianSpeciality.setStatus(ACTIVE);</span>
+<span class="fc" id="L521">			physicianSpecialityRepository.save(physicianSpeciality);</span>
+<span class="fc" id="L522">		}</span>
+<span class="fc" id="L523">	}</span>
+
+	/**
+	 * addPatientDisorders maps disorders to a patient.
+	 * 
+	 * @param userRequest
+	 * @param userEntity
+	 */
+	public void addPatientDisorders(UserDTO userRequest, User userEntity) {
+<span class="fc bfc" id="L532" title="All 2 branches covered.">		for (KeyValueDTO disorderItem : userRequest.getDisorders()) {</span>
+<span class="fc" id="L533">			PatientDisorder patientDisorder = new PatientDisorder();</span>
+<span class="fc" id="L534">			patientDisorder.setDisorderId(disorderItem.getId());</span>
+<span class="fc" id="L535">			patientDisorder.setPatientId(userEntity.getId());</span>
+<span class="fc" id="L536">			patientDisorder.setCreatedBy(userRequest.getCreatedBy());</span>
+<span class="fc" id="L537">			patientDisorder.setCreatedDate(new Date());</span>
+<span class="fc" id="L538">			patientDisorder.setStatus(ACTIVE);</span>
+<span class="fc" id="L539">			patientDisorderRepository.save(patientDisorder);</span>
+<span class="fc" id="L540">		}</span>
+<span class="fc" id="L541">	}</span>
+
+	/**
+	 * getRoleId will return id of a role
+	 * @param role
+	 * @return
+	 */
+	private int getRoleId(String role) {
+<span class="pc bpc" id="L549" title="1 of 2 branches missed.">		if(role.equals(ADMINS)) {</span>
+<span class="nc" id="L550">			return 1;</span>
+<span class="fc bfc" id="L551" title="All 2 branches covered.">		}else if(role.equals(SITE_ADMINS)) {</span>
+<span class="fc" id="L552">			return 2;</span>
+<span class="fc bfc" id="L553" title="All 2 branches covered.">		}else if(role.equals(PHYSICIANS)) {</span>
+<span class="fc" id="L554">			return 3;</span>
+<span class="pc bpc" id="L555" title="1 of 2 branches missed.">		}else if(role.equals(MEDICAL_STAFFS)) {</span>
+<span class="nc" id="L556">			return 4;</span>
+<span class="pc bpc" id="L557" title="1 of 2 branches missed.">		}else if(role.equals(PATIENTS)) {</span>
+<span class="fc" id="L558">			return 5;</span>
+		}else {
+<span class="nc" id="L560">			logger.error(&quot;Invalid Role: &quot;+role);</span>
+<span class="nc" id="L561">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Role&quot;);</span>
+		}
+	}
+
+	/**
+	 * checkAllValidations will validate email, username and phone number of user
+	 * @param userRequest
+	 * @param role
+	 */
+	private boolean checkAllValidations(UserDTO userRequest, String role) {
+<span class="fc" id="L571">		Integer siteId = userRequest.getSiteId();</span>
+<span class="fc" id="L572">		boolean isValidRequest = false;</span>
+<span class="fc" id="L573">		boolean isUsernameExist = userRepository.existsByUsername(userRequest.getUsername());</span>
+<span class="pc bpc" id="L574" title="1 of 2 branches missed.">		if(isUsernameExist) {</span>
+<span class="nc" id="L575">			logger.error(&quot;Username already exist: &quot;+userRequest.getUsername());</span>
+<span class="nc" id="L576">			throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Username already exist.&quot;);</span>
+		}
+<span class="fc" id="L578">		boolean isEmailExist = checkEmailExistance(userRequest.getEmail(),role,siteId);</span>
+<span class="fc" id="L579">		boolean isPhoneExist = checkPhoneExistance(userRequest.getPhone(),role,siteId);</span>
+<span class="pc bpc" id="L580" title="3 of 6 branches missed.">		if(!isUsernameExist &amp;&amp; !isEmailExist &amp;&amp; !isPhoneExist) {</span>
+<span class="fc" id="L581">			isValidRequest = true;</span>
+<span class="fc bfc" id="L582" title="All 2 branches covered.">			if(role.equals(PATIENTS)) {</span>
+<span class="fc" id="L583">				isValidRequest = checkSiteLicenses(siteId);</span>
+			}
+		}
+<span class="fc" id="L586">		logger.debug(&quot;Validation passed: &quot;+isValidRequest);</span>
+<span class="fc" id="L587">		return isValidRequest;</span>
+	}
+
+	/**
+	 * checkSiteLicenses will check number of license of a site
+	 * @param siteId
+	 */
+	private boolean checkSiteLicenses(int siteId) {
+<span class="fc" id="L595">		Site site = new Site();</span>
+<span class="fc" id="L596">		site.setId(siteId);</span>
+<span class="fc" id="L597">		int licenseCount = licenseAssignmentRepository.findBySiteAndPatient(site,null).size();</span>
+<span class="pc bpc" id="L598" title="1 of 2 branches missed.">		if(licenseCount &gt; 0) {</span>
+<span class="fc" id="L599">			logger.debug(&quot;Site has &quot;+licenseCount+&quot; license(s).&quot;);</span>
+<span class="fc" id="L600">			return true;</span>
+		}else {
+<span class="nc" id="L602">			logger.error(&quot;Site &quot;+siteId+&quot; don't have enough license.&quot;);</span>
+<span class="nc" id="L603">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Licenses exhausted. Please contact your Site Administrator.&quot;);</span>
+		}
+	}
+
+	/**
+	 * checkEmailExistance method is a private method to check 
+	 * whether given email already exists or not.
+	 * 
+	 * @param email
+	 * 	&lt;p&gt;Email to check for.&lt;/p&gt;
+	 * @return
+	 *  &lt;p&gt; Boolean flag for email existance&lt;/p&gt;
+	 */
+	private boolean checkEmailExistance(String email, String role, Integer siteId) {
+<span class="fc" id="L617">		boolean flag = userRepository.existsByEmail(email);</span>
+<span class="pc bpc" id="L618" title="5 of 6 branches missed.">		if(flag &amp;&amp; (role.equals(PHYSICIANS) || role.equals(MEDICAL_STAFFS))) {</span>
+<span class="nc" id="L619">			flag = userManagementRepository.checkEmailExistance(email, role, siteId);</span>
+<span class="nc bnc" id="L620" title="All 2 branches missed.">			if (flag) {</span>
+<span class="nc" id="L621">				logger.error(&quot;Email already associated with different site:&quot;+email);</span>
+<span class="nc" id="L622">				throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Email already exist.&quot;);</span>
+			}	
+<span class="pc bpc" id="L624" title="1 of 2 branches missed.">		}else if(flag) {</span>
+<span class="nc" id="L625">			logger.error(&quot;Email already exist: &quot;+email);</span>
+<span class="nc" id="L626">			throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Email already exist.&quot;);</span>
+		}
+<span class="fc" id="L628">		return flag;</span>
+	}
+
+	/**
+	 * checkPhoneExistance method is a private method to check 
+	 * whether given phone already exists or not.
+	 * 
+	 * @param phone
+	 * 	&lt;p&gt;Phone number to check for.&lt;/p&gt;
+	 * @return
+	 *  &lt;p&gt; Boolean flag for phone existance&lt;/p&gt;
+	 */
+	private boolean checkPhoneExistance(String phone, String role, Integer siteId) {
+<span class="fc" id="L641">		boolean flag = userRepository.existsByPhone(phone);</span>
+<span class="pc bpc" id="L642" title="5 of 6 branches missed.">		if(flag &amp;&amp; (role.equals(PHYSICIANS) || role.equals(MEDICAL_STAFFS))) {</span>
+<span class="nc" id="L643">			flag = userManagementRepository.checkPhoneExistance(phone, role, siteId);</span>
+<span class="nc bnc" id="L644" title="All 2 branches missed.">			if (flag) {</span>
+<span class="nc" id="L645">				logger.error(&quot;Phone already associated with different site: &quot;+phone);</span>
+<span class="nc" id="L646">				throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Phone already exist.&quot;);</span>
+			}	
+<span class="pc bpc" id="L648" title="1 of 2 branches missed.">		}else if(flag) {</span>
+<span class="nc" id="L649">			logger.error(&quot;Phone already exist: &quot;+phone);</span>
+<span class="nc" id="L650">			throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Phone already exist.&quot;);</span>
+		}
+<span class="fc" id="L652">		return flag;</span>
+
+	}
+
+	/**
+	 * getAdminDashboardData retrieves admin dashboard data 
+	 */
+	@Override
+	public Object getAdminDashboardData(Integer adminId, String stateCode) {
+<span class="fc" id="L661">		Object adminDashboardData = userManagementRepository.getAdminDashboardData(adminId,stateCode);</span>
+<span class="fc" id="L662">		logger.debug(&quot;Admin dashboard data:\n&quot;+adminDashboardData.toString());</span>
+<span class="fc" id="L663">		return 	adminDashboardData;</span>
+	}
+
+	/**
+	 * getSiteAdminDashboardData retrieves site admin dashboard data 
+	 */
+	@Override
+	public Object getSiteAdminDashboardData(Integer siteAdminId) {
+<span class="fc" id="L671">		Object siteAdminDashboardData = userManagementRepository.getSiteAdminDashboardData(siteAdminId);</span>
+<span class="fc" id="L672">		logger.debug(&quot;Site admin dashboard data\n&quot;+siteAdminDashboardData.toString());</span>
+<span class="fc" id="L673">		return 	siteAdminDashboardData;</span>
+	}
+
+	/**
+	 * getPhysicianDashboardData retrieves physician dashboard data 
+	 */
+	@Override
+	public Object getPhysicianDashboardData(Integer physicianId, Integer siteId) {
+<span class="fc" id="L681">		Object physicianDashboardData = userManagementRepository.getPhysicianDashboardData(physicianId, siteId);</span>
+<span class="fc" id="L682">		logger.debug(&quot;Physician dashboard data\n&quot;+physicianDashboardData.toString());</span>
+<span class="fc" id="L683">		return 	physicianDashboardData;</span>
+	}
+
+	/**
+	 * getUserProfilePhoto retrieves profile photo of a user
+	 * @param userId
+	 * &lt;p&gt; unique user id&lt;/p&gt;
+	 */
+	@Override
+	public String getUserProfilePhoto(Integer userId) {
+<span class="fc" id="L693">		User userEntity = userRepository.findById(userId).orElse(null);</span>
+<span class="pc bpc" id="L694" title="1 of 2 branches missed.">		if(userEntity!=null) {</span>
+<span class="fc" id="L695">			logger.debug(userEntity.getPhotoThumbnail());</span>
+<span class="fc" id="L696">			return userEntity.getPhotoThumbnail();</span>
+		}
+<span class="nc" id="L698">		return null;</span>
+	}
+
+	/**
+	 * getSitesData will retrieves site data
+	 */
+	@Override
+	public Object getSitesData() {
+<span class="fc" id="L706">		Object adminDashboardData = userManagementRepository.getAdminDashboardData(1,ALL);</span>
+<span class="fc" id="L707">		JSONObject jsonObj = new JSONObject(adminDashboardData.toString());</span>
+<span class="fc" id="L708">		String siteData = jsonObj.get(LICENSES_SUMMARY).toString();</span>
+<span class="fc" id="L709">		logger.debug(&quot;Site Data:\n&quot;+siteData);</span>
+<span class="fc" id="L710">		return 	siteData;</span>
+	}
+
+
+	/**
+	 * getPhysicians returns list of physician or physicaan-assistant belongs to particular site
+	 * 
+	 * @param siteId
+	 * &lt;p&gt; silteId to be queried in database.&lt;/p&gt;
+	 * &lt;p&gt; role to filter out physician and physician assistant&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; returns list of physician.&lt;/p&gt;
+	 */
+
+	@Override
+	public List&lt;UserDTO&gt; getPhysicians(Integer siteId,String role) {
+<span class="fc" id="L726">		Site site = new Site();</span>
+<span class="pc bpc" id="L727" title="1 of 2 branches missed.">		String formattedRole = role.equalsIgnoreCase(ALL) ? role : formatRole(role);</span>
+<span class="fc" id="L728">		site.setId(siteId);</span>
+<span class="fc" id="L729">		List&lt;UserDTO&gt; userList = new ArrayList&lt;UserDTO&gt;();</span>
+<span class="fc" id="L730">		List&lt;SiteUser&gt; siteusers = new ArrayList&lt;SiteUser&gt;();</span>
+<span class="fc" id="L731">		siteusers =  siteUserRepository.findBySite(site);</span>
+<span class="pc bpc" id="L732" title="2 of 4 branches missed.">		if(siteusers!=null &amp;&amp; siteusers.size()&gt;0){</span>
+<span class="fc bfc" id="L733" title="All 2 branches covered.">			for(SiteUser siteuser: siteusers){</span>
+<span class="fc" id="L734">				UserDTO userDTO = getPhysicianByRole(siteuser,role);</span>
+<span class="pc bpc" id="L735" title="1 of 2 branches missed.">				if(userDTO.getUsername()!=null) {</span>
+<span class="fc" id="L736">					userList.add(userDTO);</span>
+				}	
+<span class="fc" id="L738">			}</span>
+<span class="pc bpc" id="L739" title="1 of 2 branches missed.">			if(!role.equalsIgnoreCase(ALL)) {</span>
+<span class="nc" id="L740">				userList = userList.stream().filter(ul -&gt; ul.getRoleName().equals(formattedRole)).collect(Collectors.toList());</span>
+			}
+		}
+<span class="fc" id="L743">		return userList;</span>
+	}
+
+	/**
+	 * getPhysicianByRole will retrieves physician detail based on role
+	 * @param siteuser
+	 * @param role
+	 * @return physician detail
+	 */
+	public UserDTO getPhysicianByRole(SiteUser siteuser,String role)
+	{
+<span class="fc" id="L754">		UserDTO userDTO = new UserDTO();</span>
+<span class="fc" id="L755">		User userEntity = siteuser.getPhysician();</span>
+<span class="fc" id="L756">		Role userRole = userEntity.getRole();</span>
+<span class="fc" id="L757">		BeanUtils.copyProperties(userEntity, userDTO);		</span>
+<span class="fc" id="L758">		userDTO.setRoleId(userRole.getId());</span>
+<span class="fc" id="L759">		userDTO.setRoleName(formatRole(userRole.getRole()));</span>
+<span class="pc bpc" id="L760" title="1 of 2 branches missed.">		if(role.equalsIgnoreCase(ALL)) {</span>
+<span class="pc bpc" id="L761" title="3 of 4 branches missed.">			if(userRole.getRole().equals(PHYSICIANS) || userRole.getRole().equals(MEDICAL_STAFFS)) {</span>
+<span class="fc" id="L762">				setPhysicianSpecialties(userDTO, userEntity);</span>
+			}
+<span class="nc bnc" id="L764" title="All 4 branches missed.">		}else if((userRole.getRole()).equalsIgnoreCase(PHYSICIANS) &amp;&amp; role.equalsIgnoreCase(PHYSICIANS)) {</span>
+<span class="nc" id="L765">			setPhysicianSpecialties(userDTO, userEntity);</span>
+<span class="nc bnc" id="L766" title="All 4 branches missed.">		}else if((userRole.getRole()).equalsIgnoreCase(MEDICAL_STAFFS) &amp;&amp; role.equalsIgnoreCase(MEDICAL_STAFFS)) {</span>
+<span class="nc" id="L767">			setPhysicianSpecialties(userDTO, userEntity);</span>
+		}
+<span class="fc" id="L769">		userDTO.setPassword(null);</span>
+<span class="fc" id="L770">		userDTO.setCreatedBy(null);</span>
+<span class="fc" id="L771">		userDTO.setUpdatedBy(null);</span>
+<span class="fc" id="L772">		return userDTO;</span>
+	}
+
+	private String formatRole(String role) {
+<span class="pc bpc" id="L776" title="1 of 2 branches missed.">		if(role.equalsIgnoreCase(ADMINS)) {</span>
+<span class="nc" id="L777">			return &quot;Admin&quot;;</span>
+<span class="pc bpc" id="L778" title="1 of 2 branches missed.">		}else if(role.equalsIgnoreCase(SITE_ADMINS)) {</span>
+<span class="nc" id="L779">			return &quot;Site Admin&quot;;</span>
+<span class="pc bpc" id="L780" title="1 of 2 branches missed.">		}else if(role.equalsIgnoreCase(PHYSICIANS)) {</span>
+<span class="fc" id="L781">			return &quot;Physician&quot;;</span>
+<span class="nc bnc" id="L782" title="All 2 branches missed.">		}else if(role.equalsIgnoreCase(MEDICAL_STAFFS)) {</span>
+<span class="nc" id="L783">			return &quot;Medical Staff&quot;;</span>
+<span class="nc bnc" id="L784" title="All 2 branches missed.">		}else if(role.equalsIgnoreCase(PATIENTS)) {</span>
+<span class="nc" id="L785">			return &quot;Patient&quot;;</span>
+		}else {
+<span class="nc" id="L787">			logger.error(&quot;Invalid Role: &quot;+role);</span>
+<span class="nc" id="L788">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Role&quot;);</span>
+		}
+	}
+
+	/**
+	 * getPatientDetails returns list of patient belongs to particular physician
+	 * 
+	 * @param physicianId
+	 * &lt;p&gt; physicianId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; returns list of patient.&lt;/p&gt;
+	 */
+
+
+	@Override
+	public List&lt;UserDTO&gt; getPatientDetails(Integer physicianId) {
+<span class="fc" id="L804">		User users = new User();</span>
+<span class="fc" id="L805">		users.setId(physicianId);</span>
+<span class="fc" id="L806">		List&lt;SitePatient&gt; physicians = sitePatientRepository.findByPhysician(users);</span>
+<span class="pc bpc" id="L807" title="2 of 4 branches missed.">		if(physicians!=null &amp;&amp; physicians.size()&gt;0) </span>
+<span class="fc" id="L808">			return ((physicians).stream().map(this::patientDetails).collect(Collectors.toList()));</span>
+		else {
+<span class="nc" id="L810">			logger.error(&quot;Invalid Physician Id: &quot;+physicianId);</span>
+<span class="nc" id="L811">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Physician Id&quot;);</span>
+		}	
+	}
+
+	/**
+	 * patientDetails will retrieves patient detail
+	 * @param physician
+	 * @return patient detail 
+	 */
+	public UserDTO patientDetails(SitePatient physician) {
+<span class="fc" id="L821">		UserDTO patients = new UserDTO();</span>
+<span class="fc" id="L822">		User userEntity = physician.getPatient();</span>
+<span class="fc" id="L823">		BeanUtils.copyProperties(userEntity, patients);</span>
+<span class="fc" id="L824">		patients.setPassword(null);</span>
+<span class="fc" id="L825">		patients.setCreatedBy(null);</span>
+<span class="fc" id="L826">		patients.setUpdatedBy(null);</span>
+<span class="fc" id="L827">		setPatientDisorders(patients,userEntity);</span>
+		//set role
+<span class="fc" id="L829">		Role role = userEntity.getRole();</span>
+<span class="fc" id="L830">		String roleName = role.getRole();</span>
+<span class="fc" id="L831">		patients.setRoleId(role.getId());</span>
+<span class="fc" id="L832">		patients.setRoleName(roleName);</span>
+<span class="fc" id="L833">		return patients;</span>
+	}
+
+
+	/**
+	 * getPatients returns list of patient belongs to particular site
+	 * 
+	 * @param siteId
+	 * &lt;p&gt; siteId to be queried in database.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; returns list of patient.&lt;/p&gt;
+	 */
+
+	@Override
+	public List&lt;UserDTO&gt; getPatients(Integer siteId) {
+<span class="fc" id="L848">		Site site = new Site();</span>
+<span class="fc" id="L849">		site.setId(siteId);</span>
+<span class="fc" id="L850">		List&lt;UserDTO&gt; patientsList = new ArrayList&lt;UserDTO&gt;();</span>
+<span class="fc" id="L851">		List&lt;SitePatient&gt; sitepatients = sitePatientRepository.findBySite(site);</span>
+<span class="pc bpc" id="L852" title="2 of 4 branches missed.">		if(sitepatients!=null &amp;&amp; sitepatients.size()&gt;0)</span>
+<span class="fc" id="L853">			patientsList = ((sitepatients).stream().map(this::getPatient).collect(Collectors.toList()));</span>
+<span class="fc" id="L854">		return patientsList;</span>
+	}
+
+	/**
+	 * getPatient will retrieves patient detail 
+	 * @param sitePatient
+	 * @return patient detail 
+	 */
+	public UserDTO getPatient(SitePatient sitePatient)
+	{
+<span class="fc" id="L864">		UserDTO userDTO = new UserDTO();</span>
+<span class="fc" id="L865">		User userEntity = sitePatient.getPatient();</span>
+<span class="fc" id="L866">		BeanUtils.copyProperties(userEntity, userDTO);</span>
+<span class="fc" id="L867">		userDTO.setPassword(null);</span>
+<span class="fc" id="L868">		userDTO.setCreatedBy(null);</span>
+<span class="fc" id="L869">		userDTO.setUpdatedBy(null);</span>
+		//set role
+<span class="fc" id="L871">		Role role = userEntity.getRole();</span>
+<span class="fc" id="L872">		userDTO.setRoleId(role.getId());</span>
+<span class="fc" id="L873">		userDTO.setRoleName(role.getRole());</span>
+<span class="fc" id="L874">		setPatientDisorders(userDTO,userEntity);</span>
+<span class="fc" id="L875">		return userDTO;</span>
+	}
+
+	/**
+	 * getEncryptedText encrypts a specified plain text
+	 * using SHA-256 Algorithm.
+	 * 
+	 * @param plainText
+	 * 	&lt;p&gt;The plain text to be encrypted.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The desired Encrypted text.
+	 */
+	public String getEncryptedText(String plainText){
+<span class="fc" id="L888">		String encryptedText = null;		</span>
+		try {
+			// Getting encoder  
+<span class="fc" id="L891">			Base64.Encoder encoder = Base64.getEncoder();  </span>
+			// Create MessageDigest instance for MD5
+<span class="fc" id="L893">			MessageDigest md = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+			//Add password bytes to digest
+<span class="fc" id="L895">			md.update(plainText.getBytes());</span>
+			//Get the hash's bytes
+<span class="fc" id="L897">			byte[] bytes = md.digest();</span>
+			//Get complete hashed password in hex format
+<span class="fc" id="L899">			encryptedText = encoder.encodeToString(bytes); </span>
+<span class="nc" id="L900">		}catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L901">			logger.error(e.getMessage());</span>
+<span class="nc" id="L902">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L903">		}		</span>
+<span class="fc" id="L904">		return encryptedText;</span>
+	}
+
+	/**
+	 * registerSite will register a site
+	 */
+	@Override
+	public Integer registerSite(RegisterSiteDTO registerSiteDTO) {
+<span class="fc" id="L912">		Integer siteId = null;</span>
+<span class="fc" id="L913">		UserDTO siteAdminDetails = registerSiteDTO.getSiteAdminDetails();</span>
+<span class="fc" id="L914">		siteAdminDetails.setCreatedBy(registerSiteDTO.getCreatedBy());</span>
+		//Register SiteAdmin First as its id is required while registering a site.
+<span class="fc" id="L916">		Integer siteAdminId = createUser(siteAdminDetails,SITE_ADMINS);</span>
+<span class="pc bpc" id="L917" title="1 of 2 branches missed.">		if(siteAdminId!=null) {</span>
+			//Register site
+<span class="fc" id="L919">			siteId = createSite(registerSiteDTO, siteAdminId);</span>
+<span class="pc bpc" id="L920" title="1 of 2 branches missed.">			if(siteId!=null) {</span>
+				//Now assign some initial licenses to this site.
+<span class="fc" id="L922">				int licenseQty = registerSiteDTO.getLicenseQty();</span>
+<span class="fc" id="L923">				addLicensesToSite(siteId, licenseQty, registerSiteDTO.getCreatedBy());</span>
+<span class="fc" id="L924">			}else {</span>
+<span class="nc" id="L925">				logger.error(&quot;Invalid site id:&quot;+siteId);</span>
+<span class="nc" id="L926">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Something went wrong while registering the site.&quot;);</span>
+			}
+		}else {
+<span class="nc" id="L929">			logger.error(&quot;Invalid site admin id:&quot;+siteAdminId);</span>
+<span class="nc" id="L930">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Something went wrong while onboarding the site admin.&quot;);</span>
+		}
+<span class="fc" id="L932">		return siteId;</span>
+	}
+
+	/**
+	 * createSite will create a site using site admin id
+	 * @param registerSiteDTO
+	 * @param siteAdminId
+	 * &lt;p&gt; site admin is&lt;/p&gt;
+	 * @return
+	 */
+	private Integer createSite(RegisterSiteDTO registerSiteDTO, Integer siteAdminId) {
+<span class="fc" id="L943">		SiteDTO siteDetails = registerSiteDTO.getSiteDetails();</span>
+<span class="fc" id="L944">		siteDetails.setCreatedBy(registerSiteDTO.getCreatedBy());</span>
+<span class="fc" id="L945">		Site siteEntity = new Site();</span>
+<span class="fc" id="L946">		BeanUtils.copyProperties(siteDetails, siteEntity);</span>
+<span class="fc" id="L947">		User siteAdmin = new User();</span>
+<span class="fc" id="L948">		siteAdmin.setId(siteAdminId);</span>
+<span class="fc" id="L949">		siteEntity.setSiteAdmin(siteAdmin);</span>
+<span class="fc" id="L950">		siteEntity.setStatus(ACTIVE);</span>
+<span class="fc" id="L951">		siteEntity.setCreatedDate(new Date());</span>
+<span class="fc" id="L952">		logger.debug(&quot;Site admin id:&quot;+siteAdminId);</span>
+<span class="fc" id="L953">		siteEntity = siteRepository.save(siteEntity);</span>
+<span class="fc" id="L954">		return siteEntity.getId();</span>
+	}
+
+	/**
+	 * changePassword used to change the old password.
+	 * 
+	 * @param changePasswordRequest
+	 * &lt;p&gt;changePasswordRequest holds Old and New password.&lt;/p&gt;
+	 * @param updatedBy
+	 * &lt;p&gt;Username of person who is performing this action&lt;/p&gt;
+	 */
+	@Override
+	public void changePassword(ChangePasswordDTO changePasswordRequest, String updatedBy) {
+<span class="fc" id="L967">		User userEntity = userRepository.findById(changePasswordRequest.getUserId()).orElse(null);</span>
+<span class="pc bpc" id="L968" title="1 of 2 branches missed.">		if(userEntity!=null) {</span>
+<span class="pc bpc" id="L969" title="1 of 2 branches missed.">			if(userEntity.getStatus().equalsIgnoreCase(INACTIVE)) {</span>
+<span class="nc" id="L970">				logger.error(&quot;User &quot;+changePasswordRequest.getUserId()+&quot; is inactive&quot;);</span>
+<span class="nc" id="L971">				throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Your account is inactive. Please contact administrator.&quot;);</span>
+			}
+<span class="fc" id="L973">			String oldEncryptedPass = getEncryptedText(changePasswordRequest.getOldPassword());</span>
+<span class="fc" id="L974">			String newEncryptedPass = getEncryptedText(changePasswordRequest.getNewPassword());</span>
+<span class="pc bpc" id="L975" title="1 of 2 branches missed.">			if(oldEncryptedPass.equals(userEntity.getPassword())) {</span>
+<span class="fc" id="L976">				userEntity.setPassword(newEncryptedPass);</span>
+<span class="fc" id="L977">				userEntity.setUpdatedBy(updatedBy);</span>
+<span class="fc" id="L978">				userEntity.setUpdatedDate(new Date());</span>
+<span class="fc" id="L979">				userRepository.save(userEntity);</span>
+			}else {
+<span class="nc" id="L981">				logger.error(&quot;Incorrect old password&quot;);</span>
+<span class="nc" id="L982">				throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;Incorrect old password.&quot;);</span>
+			}
+		}
+<span class="fc" id="L985">	}</span>
+
+	/**
+	 * resetPassword will reset the password of user
+	 * @param userId
+	 * &lt;p&gt;user id&lt;/p&gt;
+	 * @param updatedBy
+	 * &lt;p&gt; username of logged in user&lt;/p&gt;
+	 */
+	@Override
+	public void resetPassword(Integer userId, String updatedBy) {
+<span class="fc" id="L996">		User userEntity = userRepository.findById(userId).orElse(null);</span>
+<span class="pc bpc" id="L997" title="1 of 2 branches missed.">		if(userEntity!=null) {</span>
+<span class="pc bpc" id="L998" title="1 of 2 branches missed.">			if(userEntity.getStatus().equalsIgnoreCase(INACTIVE)) {</span>
+<span class="nc" id="L999">				logger.error(&quot;User is inactive :&quot;+userId);</span>
+<span class="nc" id="L1000">				throw new PainscriptBusinessException(&quot;ERR_001&quot;,&quot;This account is inactive.&quot;);</span>
+			}
+<span class="fc" id="L1002">			String plainPass = UserManagementService.generateDefaultPassword();</span>
+<span class="fc" id="L1003">			plainPass = &quot;2222&quot;; //TODO: remove later</span>
+<span class="fc" id="L1004">			String encodedPassword = getEncryptedText(plainPass);</span>
+<span class="fc" id="L1005">			userEntity.setPassword(encodedPassword);</span>
+<span class="fc" id="L1006">			userEntity.setUpdatedBy(updatedBy);</span>
+<span class="fc" id="L1007">			userEntity.setUpdatedDate(new Date());</span>
+<span class="fc" id="L1008">			userRepository.save(userEntity);</span>
+<span class="fc" id="L1009">			EmailDTO email = new EmailDTO();</span>
+<span class="fc" id="L1010">			email.setEmailAddress(userEntity.getEmail());</span>
+<span class="pc bpc" id="L1011" title="1 of 2 branches missed.">			boolean useHardcodedEmail = !sendToActualEmail;</span>
+<span class="pc bpc" id="L1012" title="5 of 6 branches missed.">			if(activeProfile!=null &amp;&amp; activeProfile.equalsIgnoreCase(&quot;qa&quot;)  &amp;&amp; useHardcodedEmail)</span>
+<span class="nc" id="L1013">				email.setEmailAddress(&quot;babji.pedarla@prolifics.com&quot;);//TODO: needs to be changed later</span>
+<span class="pc bpc" id="L1014" title="5 of 6 branches missed.">			else if(activeProfile!=null &amp;&amp; activeProfile.equalsIgnoreCase(&quot;dev&quot;)  &amp;&amp; useHardcodedEmail)</span>
+<span class="nc" id="L1015">				email.setEmailAddress(&quot;babji.pedarla@prolifics.com&quot;);//TODO: needs to be changed later</span>
+<span class="fc" id="L1016">			email.setSubject(&quot;Password Reset&quot;);</span>
+<span class="fc" id="L1017">			email.setTemplate(&quot;password-reset&quot;);</span>
+<span class="fc" id="L1018">			Map&lt;String,Object&gt; templateInputs = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L1019">			templateInputs.put(&quot;password&quot;, plainPass);</span>
+<span class="fc" id="L1020">			email.setTemplateInputs(templateInputs);</span>
+<span class="fc" id="L1021">			sendEmailUsingTemplate(email);</span>
+		}
+<span class="fc" id="L1023">	}</span>
+
+	/**
+	 * updateSiteInfo will update the site information
+	 */
+	@Override
+	public void updateSiteInfo(SiteDTO siteDTO) {
+<span class="fc" id="L1030">		Site site = siteRepository.findById(siteDTO.getId()).orElse(null);</span>
+<span class="pc bpc" id="L1031" title="1 of 2 branches missed.">		if(site!=null) {		</span>
+<span class="pc bpc" id="L1032" title="1 of 2 branches missed.">			site.setAddressLine1(siteDTO.getAddressLine1()!=null?siteDTO.getAddressLine1():site.getAddressLine1());</span>
+<span class="pc bpc" id="L1033" title="1 of 2 branches missed.">			site.setAddressLine2(siteDTO.getAddressLine2()!=null?siteDTO.getAddressLine2():site.getAddressLine2());</span>
+<span class="pc bpc" id="L1034" title="1 of 2 branches missed.">			site.setCity(siteDTO.getCity()!=null?siteDTO.getCity():site.getCity());</span>
+<span class="pc bpc" id="L1035" title="1 of 2 branches missed.">			site.setLattitude(siteDTO.getLattitude()!=null?siteDTO.getLattitude():site.getLattitude());</span>
+<span class="pc bpc" id="L1036" title="1 of 2 branches missed.">			site.setLongitude(siteDTO.getLongitude()!=null?siteDTO.getLongitude():site.getLongitude());</span>
+<span class="pc bpc" id="L1037" title="1 of 2 branches missed.">			site.setName(siteDTO.getName()!=null?siteDTO.getName():site.getName());</span>
+<span class="pc bpc" id="L1038" title="1 of 2 branches missed.">			site.setPin(siteDTO.getPin()!=null?siteDTO.getPin():site.getPin());</span>
+<span class="pc bpc" id="L1039" title="1 of 2 branches missed.">			site.setState(siteDTO.getState()!=null?siteDTO.getState():site.getState());</span>
+<span class="pc bpc" id="L1040" title="1 of 2 branches missed.">			site.setStatus(siteDTO.getStatus()!=null?siteDTO.getStatus():site.getStatus());</span>
+<span class="pc bpc" id="L1041" title="1 of 2 branches missed.">			site.setUpdatedBy(siteDTO.getUpdatedBy()!=null?siteDTO.getUpdatedBy():site.getUpdatedBy());</span>
+<span class="fc" id="L1042">			site.setUpdatedDate(new Date());</span>
+<span class="fc" id="L1043">			siteRepository.save(site);</span>
+		}
+<span class="fc" id="L1045">	}</span>
+
+	/**
+	 * updateUserProfile will update the profile of user 
+	 * @param userId
+	 * &lt;p&gt;unique user id
+	 * @param userRequest
+	 * &lt;p&gt;data transfer object of user&lt;/p&gt;
+	 */
+	@Override
+	public void updateUserProfile(Integer userId, UserDTO userRequest) {
+<span class="fc" id="L1056">		User userEntity = userRepository.findById(userId).orElse(null);</span>
+<span class="fc" id="L1057">		boolean updatingTokenFirstTime = notificationRepo.existsByUserId(userId);</span>
+<span class="fc" id="L1058">		userEntity = mapUserRequestToEntity(userRequest,userEntity);</span>
+<span class="fc" id="L1059">		String roleName = userEntity.getRole().getRole();</span>
+<span class="fc bfc" id="L1060" title="All 2 branches covered.">		if(roleName.equals(PATIENTS)) {</span>
+<span class="pc bpc" id="L1061" title="1 of 2 branches missed.">			if(userRequest.getDisorders() !=null) {</span>
+<span class="fc" id="L1062">				updatePatientDisorders(userRequest, userEntity);</span>
+			}
+<span class="pc bpc" id="L1064" title="1 of 2 branches missed.">			logger.debug(&quot;Updated token for the first time: &quot;+!updatingTokenFirstTime);</span>
+<span class="pc bpc" id="L1065" title="3 of 6 branches missed.">			if(!updatingTokenFirstTime &amp;&amp; userRequest.getDeviceToken()!=null &amp;&amp; userRequest.getDeviceType()!=null) {</span>
+<span class="fc" id="L1066">				Notification notificationEntity = new Notification(WELCOME_MSZ, &quot;Welcome&quot;,null);</span>
+<span class="fc" id="L1067">				saveNotification(notificationEntity,userEntity.getId(),userEntity.getUpdatedBy());</span>
+<span class="fc" id="L1068">				sendNotificationToToken(&quot;Welcome&quot;, WELCOME_MSZ ,userEntity.getDeviceToken());</span>
+<span class="fc" id="L1069">				subscribeToTopic(userEntity.getDeviceToken(),&quot;painscript&quot;);</span>
+<span class="fc" id="L1070">			}</span>
+<span class="pc bpc" id="L1071" title="1 of 4 branches missed.">		}else if((roleName.equals(PHYSICIANS)) &amp;&amp; userRequest.getSpecialities() !=null) {</span>
+<span class="fc" id="L1072">			updatePhysicianSpecialties(userRequest, userEntity);</span>
+<span class="pc bpc" id="L1073" title="1 of 4 branches missed.">		}else if((roleName.equals(MEDICAL_STAFFS)) &amp;&amp; userRequest.getSpecialities() !=null) {</span>
+<span class="fc" id="L1074">			updatePhysicianAssistantSpecialties(userRequest, userEntity);</span>
+		}
+<span class="fc" id="L1076">		userEntity.setUpdatedDate(new Date());</span>
+<span class="fc" id="L1077">		userEntity.setUpdatedBy(userRequest.getUpdatedBy());</span>
+<span class="fc" id="L1078">		userRepository.save(userEntity);</span>
+<span class="fc" id="L1079">	}</span>
+
+	/**
+	 * updatePhysicianAssistantSpecialties method updates specialties of a physician assistant.
+	 * 
+	 * @param userRequest
+	 * @param userEntity
+	 */
+	private void updatePhysicianAssistantSpecialties(UserDTO userRequest, User userEntity) {
+<span class="pc bpc" id="L1088" title="1 of 2 branches missed.">		if(userRequest.getSpecialities().size() == 1) {</span>
+<span class="fc" id="L1089">			logger.debug(&quot;Physician assistant id:&quot;+userRequest.getId());</span>
+<span class="fc" id="L1090">			KeyValueDTO keyValueDTO = userRequest.getSpecialities().get(0);</span>
+<span class="fc" id="L1091">			PhysicianSpeciality physicianSpeciality = userEntity.getPhysicianSpecialities().get(0);</span>
+<span class="fc" id="L1092">			physicianSpeciality.setSpecialityId(keyValueDTO.getId());</span>
+<span class="fc" id="L1093">			physicianSpeciality.setStatus(ACTIVE);</span>
+<span class="fc" id="L1094">			physicianSpeciality.setUpdatedBy(userRequest.getUpdatedBy());</span>
+<span class="fc" id="L1095">			physicianSpeciality.setUpdatedDate(new Date());</span>
+<span class="fc" id="L1096">			physicianSpecialityRepository.save(physicianSpeciality);</span>
+<span class="fc" id="L1097">		}else {</span>
+<span class="nc" id="L1098">			logger.error(&quot;Physician Assistant can't have more than one title.&quot;);</span>
+<span class="nc" id="L1099">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Physician Assistant can't have more than one title.&quot;);</span>
+		}
+<span class="fc" id="L1101">	}</span>
+
+	/**
+	 * sendNotificationToToken is used to send notification
+	 * to their respective user based on deviceToken
+	 * @param notificationTitle,
+	 * @param notificationMessage
+	 * @param token
+	 * @return
+	 */
+	private void sendNotificationToToken(String notificationTitle,String notificationMessage, String token) {		
+<span class="fc" id="L1112">		PushNotificationRequestDTO notificationRequest = new PushNotificationRequestDTO(notificationTitle, notificationMessage, null);</span>
+<span class="fc" id="L1113">		notificationRequest.setToken(token);</span>
+<span class="fc" id="L1114">		utilProxy.sendNotification(notificationRequest);</span>
+<span class="fc" id="L1115">	}</span>
+
+	/**
+	 * subscribeToTopic is used to subscribe a topic in fcm.
+	 * 
+	 * @param registrationTokens
+	 * @param topic
+	 * @return
+	 */
+	private void subscribeToTopic(String token,String topic) {
+<span class="fc" id="L1125">		List&lt;String&gt; registrationTokens = new ArrayList&lt;String&gt;();</span>
+<span class="fc" id="L1126">		registrationTokens.add(token);</span>
+<span class="fc" id="L1127">		utilProxy.subscribeToTopic(registrationTokens,topic);</span>
+<span class="fc" id="L1128">	}</span>
+
+	/**
+	 * Saves notification entry in DB
+	 * 
+	 * @param notificationEntity
+	 * @param createdBy
+	 */
+	private void saveNotification(Notification notificationEntity,Integer userId, String createdBy) {
+<span class="fc" id="L1137">		notificationEntity.setReadFlag((byte) 0);</span>
+<span class="fc" id="L1138">		notificationEntity.setCreatedBy(createdBy);</span>
+<span class="fc" id="L1139">		notificationEntity.setUserId(userId);</span>
+<span class="fc" id="L1140">		notificationEntity.setStatus(ACTIVE);</span>
+<span class="fc" id="L1141">		notificationEntity.setCreatedDate(new Date());</span>
+<span class="fc" id="L1142">		notificationRepo.save(notificationEntity);</span>
+<span class="fc" id="L1143">	}</span>
+
+	/**
+	 * updatePatientDisorders methods updates patients disorders
+	 * 
+	 * @param userRequest
+	 * @param entityManager
+	 * @param userEntity
+	 */
+	public void updatePatientDisorders(UserDTO userRequest, User userEntity) {
+<span class="fc" id="L1153">		List&lt;PatientDisorder&gt; existingPatientDisorders = userEntity.getPatientDisorders();</span>
+<span class="fc" id="L1154">		Set&lt;String&gt; existingDisorderIds = new HashSet&lt;String&gt;();</span>
+<span class="pc bpc" id="L1155" title="2 of 4 branches missed.">		if(existingPatientDisorders!=null &amp;&amp; existingPatientDisorders.size() &gt; 0) {</span>
+<span class="fc" id="L1156">			existingPatientDisorders.forEach((item)-&gt;{</span>
+<span class="fc" id="L1157">				existingDisorderIds.add(Integer.toString(item.getDisorderId()));</span>
+<span class="fc" id="L1158">			});</span>
+		}
+<span class="fc" id="L1160">		Set&lt;String&gt; incomingDisorderIds = new HashSet&lt;String&gt;();</span>
+<span class="fc" id="L1161">		userRequest.getDisorders().forEach((item) -&gt; {</span>
+<span class="fc" id="L1162">			incomingDisorderIds.add(Integer.toString(item.getId()));</span>
+<span class="fc" id="L1163">		});</span>
+<span class="fc" id="L1164">		Set&lt;String&gt; existingMinusNew = new HashSet&lt;String&gt;(existingDisorderIds); </span>
+<span class="fc" id="L1165">		existingMinusNew.removeAll(incomingDisorderIds);</span>
+<span class="pc bpc" id="L1166" title="2 of 4 branches missed.">		if(existingPatientDisorders!=null &amp;&amp; existingPatientDisorders.size() &gt; 0) {</span>
+<span class="fc" id="L1167">			existingPatientDisorders.forEach((item)-&gt;{</span>
+<span class="pc bpc" id="L1168" title="1 of 2 branches missed.">				if(existingMinusNew.contains(Integer.toString(item.getDisorderId()))) {</span>
+<span class="nc" id="L1169">					PatientDisorder patientDisorder = item;</span>
+<span class="nc" id="L1170">					patientDisorder.setStatus(INACTIVE);</span>
+<span class="nc" id="L1171">					patientDisorder.setUpdatedBy(userRequest.getUpdatedBy());</span>
+<span class="nc" id="L1172">					patientDisorder.setUpdatedDate(new Date());</span>
+<span class="nc" id="L1173">					patientDisorderRepository.save(patientDisorder);</span>
+				}
+<span class="fc" id="L1175">			});</span>
+		}
+
+<span class="fc" id="L1178">		Set&lt;String&gt; newMinusExisting = new HashSet&lt;String&gt;(incomingDisorderIds); </span>
+<span class="fc" id="L1179">		newMinusExisting.removeAll(existingDisorderIds);</span>
+
+<span class="pc bpc" id="L1181" title="1 of 2 branches missed.">		for (String disorderIdToActivate : newMinusExisting) {</span>
+<span class="nc" id="L1182">			PatientDisorder patientDisorder = new PatientDisorder();</span>
+<span class="nc" id="L1183">			patientDisorder.setDisorderId(Integer.parseInt(disorderIdToActivate));</span>
+<span class="nc" id="L1184">			patientDisorder.setPatientId(userEntity.getId());</span>
+<span class="nc" id="L1185">			patientDisorder.setCreatedBy(userRequest.getCreatedBy());</span>
+<span class="nc" id="L1186">			patientDisorder.setCreatedDate(new Date());</span>
+<span class="nc" id="L1187">			patientDisorder.setStatus(ACTIVE);</span>
+<span class="nc" id="L1188">			patientDisorderRepository.save(patientDisorder);</span>
+<span class="nc" id="L1189">		}</span>
+
+<span class="fc" id="L1191">		Set&lt;String&gt; retainAllExisting = new HashSet&lt;String&gt;(existingDisorderIds); </span>
+<span class="fc" id="L1192">		retainAllExisting.retainAll(incomingDisorderIds);</span>
+<span class="pc bpc" id="L1193" title="2 of 4 branches missed.">		if(existingPatientDisorders!=null &amp;&amp; existingPatientDisorders.size() &gt; 0) {</span>
+<span class="fc" id="L1194">			existingPatientDisorders.forEach((item)-&gt;{</span>
+<span class="pc bpc" id="L1195" title="2 of 4 branches missed.">				if(retainAllExisting.contains(Integer.toString(item.getDisorderId())) &amp;&amp; item.getStatus().equals(INACTIVE)) {</span>
+<span class="nc" id="L1196">					PatientDisorder patientDisorder = item;</span>
+<span class="nc" id="L1197">					patientDisorder.setStatus(ACTIVE);</span>
+<span class="nc" id="L1198">					patientDisorder.setUpdatedBy(userRequest.getUpdatedBy());</span>
+<span class="nc" id="L1199">					patientDisorder.setUpdatedDate(new Date());</span>
+<span class="nc" id="L1200">					patientDisorderRepository.save(patientDisorder);</span>
+				}
+<span class="fc" id="L1202">			});</span>
+		}
+<span class="fc" id="L1204">	}</span>
+
+	/**
+	 * updatePhysicianSpecialties method updates specialties of a physician.
+	 * 
+	 * @param userRequest
+	 * @param entityManager
+	 * @param userEntity
+	 */
+	public void updatePhysicianSpecialties(UserDTO userRequest, User userEntity) {
+<span class="fc" id="L1214">		List&lt;PhysicianSpeciality&gt; existingCaregiverSpecialties = userEntity.getPhysicianSpecialities();</span>
+<span class="fc" id="L1215">		Set&lt;String&gt; existingSpecialtyIds = new HashSet&lt;String&gt;();</span>
+<span class="pc bpc" id="L1216" title="2 of 4 branches missed.">		if(existingCaregiverSpecialties!=null &amp;&amp; existingCaregiverSpecialties.size() &gt; 0) {</span>
+<span class="fc" id="L1217">			existingCaregiverSpecialties.forEach((item)-&gt;{</span>
+<span class="fc" id="L1218">				existingSpecialtyIds.add(Integer.toString(item.getSpecialityId()));</span>
+<span class="fc" id="L1219">			});</span>
+		}
+<span class="fc" id="L1221">		Set&lt;String&gt; incomingSpecialtyIds = new HashSet&lt;String&gt;();</span>
+<span class="fc" id="L1222">		userRequest.getSpecialities().forEach((item) -&gt; {</span>
+<span class="fc" id="L1223">			incomingSpecialtyIds.add(Integer.toString(item.getId()));</span>
+<span class="fc" id="L1224">		});</span>
+<span class="fc" id="L1225">		Set&lt;String&gt; existingMinusNew = new HashSet&lt;String&gt;(existingSpecialtyIds); </span>
+<span class="fc" id="L1226">		existingMinusNew.removeAll(incomingSpecialtyIds);</span>
+<span class="pc bpc" id="L1227" title="2 of 4 branches missed.">		if(existingCaregiverSpecialties!=null &amp;&amp; existingCaregiverSpecialties.size() &gt; 0) {</span>
+<span class="fc" id="L1228">			existingCaregiverSpecialties.forEach((item)-&gt;{</span>
+<span class="pc bpc" id="L1229" title="1 of 2 branches missed.">				if(existingMinusNew.contains(Integer.toString(item.getSpecialityId()))) {</span>
+<span class="nc" id="L1230">					PhysicianSpeciality physicianSpeciality = item;</span>
+<span class="nc" id="L1231">					physicianSpeciality.setStatus(INACTIVE);</span>
+<span class="nc" id="L1232">					physicianSpeciality.setUpdatedBy(userRequest.getUpdatedBy());</span>
+<span class="nc" id="L1233">					physicianSpeciality.setUpdatedDate(new Date());</span>
+<span class="nc" id="L1234">					physicianSpecialityRepository.save(physicianSpeciality);	</span>
+				}
+<span class="fc" id="L1236">			});</span>
+		}
+
+<span class="fc" id="L1239">		Set&lt;String&gt; newMinusExisting = new HashSet&lt;String&gt;(incomingSpecialtyIds); </span>
+<span class="fc" id="L1240">		newMinusExisting.removeAll(existingSpecialtyIds);</span>
+<span class="pc bpc" id="L1241" title="1 of 2 branches missed.">		for (String specialtyIdToActivate : newMinusExisting) {</span>
+<span class="nc" id="L1242">			PhysicianSpeciality physicianSpeciality = new PhysicianSpeciality();</span>
+<span class="nc" id="L1243">			physicianSpeciality.setSpecialityId(Integer.parseInt(specialtyIdToActivate));</span>
+<span class="nc" id="L1244">			physicianSpeciality.setPhysicianId(userEntity.getId());</span>
+<span class="nc" id="L1245">			physicianSpeciality.setCreatedBy(userRequest.getCreatedBy());</span>
+<span class="nc" id="L1246">			physicianSpeciality.setCreatedDate(new Date());</span>
+<span class="nc" id="L1247">			physicianSpeciality.setStatus(ACTIVE);</span>
+<span class="nc" id="L1248">			physicianSpecialityRepository.save(physicianSpeciality);	</span>
+<span class="nc" id="L1249">		}</span>
+
+<span class="fc" id="L1251">		Set&lt;String&gt; retainAllExisting = new HashSet&lt;String&gt;(existingSpecialtyIds); </span>
+<span class="fc" id="L1252">		retainAllExisting.retainAll(incomingSpecialtyIds);</span>
+<span class="pc bpc" id="L1253" title="2 of 4 branches missed.">		if(existingCaregiverSpecialties!=null &amp;&amp; existingCaregiverSpecialties.size() &gt; 0) {</span>
+<span class="fc" id="L1254">			existingCaregiverSpecialties.forEach((item)-&gt;{</span>
+<span class="pc bpc" id="L1255" title="2 of 4 branches missed.">				if(retainAllExisting.contains(Integer.toString(item.getSpecialityId())) &amp;&amp; item.getStatus().equals(INACTIVE)) {</span>
+<span class="nc" id="L1256">					PhysicianSpeciality physicianSpeciality = item;</span>
+<span class="nc" id="L1257">					physicianSpeciality.setStatus(ACTIVE);</span>
+<span class="nc" id="L1258">					physicianSpeciality.setUpdatedBy(userRequest.getUpdatedBy());</span>
+<span class="nc" id="L1259">					physicianSpeciality.setUpdatedDate(new Date());</span>
+<span class="nc" id="L1260">					physicianSpecialityRepository.save(physicianSpeciality);	</span>
+				}
+<span class="fc" id="L1262">			});</span>
+		}
+<span class="fc" id="L1264">	}</span>
+
+	/**
+	 * checkDeviceIdExistance will check the device id
+	 * @param userRequest
+	 * @param entityManager
+	 */
+	private void checkDeviceIdExistance(UserDTO userRequest) {
+<span class="pc bpc" id="L1272" title="3 of 6 branches missed.">		if(userRequest.getDeviceId()!=null &amp;&amp; userRequest.getDeviceToken()!=null &amp;&amp; userRequest.getDeviceType()!=null) {</span>
+<span class="fc" id="L1273">			List&lt;User&gt; updatedList = new ArrayList&lt;User&gt;();</span>
+<span class="fc" id="L1274">			List&lt;User&gt; userIds = userRepository.findByDeviceId(userRequest.getDeviceId());</span>
+<span class="fc" id="L1275">			logger.debug(&quot;Users available with same device id: &quot;+userIds.size());</span>
+<span class="pc bpc" id="L1276" title="2 of 4 branches missed.">			if(userIds!= null &amp;&amp; userIds.size() &gt; 0) {</span>
+<span class="fc bfc" id="L1277" title="All 2 branches covered.">				for(User entity : userIds){</span>
+<span class="fc" id="L1278">					entity.setDeviceId(null);</span>
+<span class="fc" id="L1279">					entity.setDeviceType(null);</span>
+<span class="fc" id="L1280">					entity.setDeviceToken(null);</span>
+<span class="fc" id="L1281">					entity.setUpdatedBy(userRequest.getUpdatedBy());</span>
+<span class="fc" id="L1282">					entity.setUpdatedDate(new Date());</span>
+<span class="fc" id="L1283">					updatedList.add(entity);</span>
+<span class="fc" id="L1284">				}</span>
+<span class="fc" id="L1285">				userRepository.saveAll(updatedList);</span>
+			}
+		}
+<span class="fc" id="L1288">	}</span>
+
+	/**
+	 * mapUserRequestToEntity method is a private method to map UserDTO to UserEntity
+	 * 
+	 * @param userRequest
+	 * 	&lt;p&gt;User data to map to user Entity.&lt;/p&gt;
+	 * @param userEntity
+	 * 	&lt;p&gt;User entity reference that needs to be updated.&lt;/p&gt;
+	 */
+	private User mapUserRequestToEntity(UserDTO userRequest, User userEntity) {
+<span class="fc" id="L1299">		String roleName = userEntity.getRole().getRole();</span>
+<span class="fc" id="L1300">		Integer siteId = null;	</span>
+<span class="fc" id="L1301">		String userStatus = userRequest.getStatus();</span>
+<span class="pc bpc" id="L1302" title="1 of 2 branches missed.">		if(userStatus != null) {</span>
+<span class="nc" id="L1303">			userEntity.setStatus(userStatus);</span>
+<span class="nc" id="L1304">			toggleUserStatus(userEntity, roleName, userStatus);</span>
+		}else {
+<span class="fc bfc" id="L1306" title="All 2 branches covered.">			if(roleName.equals(SITE_ADMINS)) {</span>
+<span class="fc" id="L1307">				Site site = siteRepository.findBySiteAdmin(userEntity);</span>
+<span class="fc" id="L1308">				siteId = site.getId();</span>
+<span class="fc bfc" id="L1309" title="All 4 branches covered.">			}else if(roleName.equals(PHYSICIANS) || roleName.equals(MEDICAL_STAFFS)) {</span>
+<span class="fc" id="L1310">				SiteUser siteUser = siteUserRepository.findByPhysicianAndStatus(userEntity,ACTIVE);</span>
+<span class="fc" id="L1311">				siteId = siteUser.getSiteId();</span>
+<span class="pc bpc" id="L1312" title="1 of 2 branches missed.">			}else if(roleName.equals(PATIENTS)) {</span>
+<span class="fc" id="L1313">				List&lt;SitePatient&gt; sitePatients = sitePatientRepository.findByPatientIdAndStatus(userEntity.getId(),ACTIVE);</span>
+<span class="pc bpc" id="L1314" title="2 of 4 branches missed.">				if(sitePatients!=null &amp;&amp; sitePatients.size() &gt; 0) {</span>
+<span class="nc" id="L1315">					SitePatient sitePatient = sitePatients.get(0);</span>
+<span class="nc" id="L1316">					siteId = sitePatient.getSiteId();</span>
+				}
+			}
+<span class="pc bpc" id="L1319" title="1 of 2 branches missed.">			userEntity.setCity(userRequest.getCity() == null ? userEntity.getCity() : userRequest.getCity());</span>
+<span class="fc" id="L1320">			logger.debug(&quot;\nDeviceId: &quot;+userRequest.getDeviceId()+&quot;\nDeviceType: &quot;+userRequest.getDeviceType()</span>
+<span class="fc" id="L1321">			+&quot;\nDeviceToken: &quot;+userRequest.getDeviceToken());</span>
+<span class="pc bpc" id="L1322" title="2 of 6 branches missed.">			if(userRequest.getDeviceId()!=null &amp;&amp; userRequest.getDeviceToken()!=null &amp;&amp; userRequest.getDeviceType()!=null) {</span>
+<span class="fc" id="L1323">				checkDeviceIdExistance(userRequest);</span>
+<span class="fc" id="L1324">				userEntity.setDeviceId(userRequest.getDeviceId());</span>
+<span class="fc" id="L1325">				userEntity.setDeviceType(userRequest.getDeviceType());</span>
+<span class="fc" id="L1326">				userEntity.setDeviceToken(userRequest.getDeviceToken());</span>
+<span class="fc" id="L1327">				logger.debug(&quot;Device token updated for user id: &quot;+userRequest.getId());</span>
+			}
+<span class="pc bpc" id="L1329" title="1 of 2 branches missed.">			userEntity.setDob(userRequest.getDob() == null ? userEntity.getDob() : userRequest.getDob());</span>
+<span class="pc bpc" id="L1330" title="2 of 4 branches missed.">			if(userRequest.getEmail()!= null &amp;&amp; !userRequest.getEmail().isEmpty()) {</span>
+<span class="pc bpc" id="L1331" title="3 of 4 branches missed.">				if(!userRequest.getEmail().equals(userEntity.getEmail()) &amp;&amp; !checkEmailExistance(userRequest.getEmail(),roleName,siteId)) {</span>
+<span class="nc" id="L1332">					userEntity.setEmail(userRequest.getEmail());</span>
+				}
+			}
+<span class="pc bpc" id="L1335" title="1 of 2 branches missed.">			userEntity.setFirstName(userRequest.getFirstName() == null ? userEntity.getFirstName() : userRequest.getFirstName());</span>
+<span class="pc bpc" id="L1336" title="1 of 2 branches missed.">			userEntity.setGender(userRequest.getGender() == null ? userEntity.getGender() : userRequest.getGender());</span>
+<span class="pc bpc" id="L1337" title="1 of 2 branches missed.">			userEntity.setLastName(userRequest.getLastName() == null ? userEntity.getLastName() : userRequest.getLastName());</span>
+<span class="pc bpc" id="L1338" title="1 of 2 branches missed.">			userEntity.setMiddleName(userRequest.getMiddleName() == null ? userEntity.getMiddleName() : userRequest.getMiddleName());</span>
+<span class="pc bpc" id="L1339" title="2 of 4 branches missed.">			if(userRequest.getPhone()!= null &amp;&amp; !userRequest.getPhone().isEmpty()) {</span>
+<span class="pc bpc" id="L1340" title="3 of 4 branches missed.">				if(!userRequest.getPhone().equals(userEntity.getPhone()) &amp;&amp; !checkPhoneExistance(userRequest.getPhone(),roleName,siteId)) {</span>
+<span class="nc" id="L1341">					userEntity.setPhone(userRequest.getPhone());</span>
+				}
+			}
+<span class="pc bpc" id="L1344" title="1 of 2 branches missed.">			userEntity.setAdditionalRemarks(userRequest.getAdditionalRemarks() == null ? userEntity.getAdditionalRemarks() : userRequest.getAdditionalRemarks());</span>
+<span class="pc bpc" id="L1345" title="1 of 2 branches missed.">			userEntity.setMedicalLicenseNumber(userRequest.getMedicalLicenseNumber() == null ? userEntity.getMedicalLicenseNumber() : userRequest.getMedicalLicenseNumber());</span>
+<span class="pc bpc" id="L1346" title="1 of 2 branches missed.">			userEntity.setPhotoThumbnail(userRequest.getPhotoThumbnail() == null ? userEntity.getPhotoThumbnail() : userRequest.getPhotoThumbnail());</span>
+<span class="pc bpc" id="L1347" title="1 of 2 branches missed.">			userEntity.setPin(userRequest.getPin() == null ? userEntity.getPin() : userRequest.getPin());</span>
+			
+<span class="pc bpc" id="L1349" title="1 of 2 branches missed.">			userEntity.setState(userRequest.getState() == null ? userEntity.getState() : userRequest.getState());</span>
+<span class="pc bpc" id="L1350" title="1 of 2 branches missed.">			userEntity.setUniqueIdentifier(userRequest.getUniqueIdentifier() == null ? userEntity.getUniqueIdentifier() : userRequest.getUniqueIdentifier());</span>
+<span class="pc bpc" id="L1351" title="1 of 2 branches missed.">			userEntity.setAddressLine1(userRequest.getAddressLine1() == null ? userEntity.getAddressLine1() : userRequest.getAddressLine1());</span>
+<span class="pc bpc" id="L1352" title="1 of 2 branches missed.">			userEntity.setAddressLine2(userRequest.getAddressLine2() == null ? userEntity.getAddressLine2() : userRequest.getAddressLine2());</span>
+		}
+<span class="pc bpc" id="L1354" title="1 of 2 branches missed.">		userEntity.setUpdatedBy(userRequest.getUpdatedBy() == null ? userEntity.getUpdatedBy() : userRequest.getUpdatedBy());</span>
+<span class="fc" id="L1355">		userEntity.setUpdatedDate(new Date());</span>
+<span class="fc" id="L1356">		return userEntity;</span>
+	}
+
+	private void toggleUserStatus(User userEntity, String roleName, String userStatus) {
+<span class="nc bnc" id="L1360" title="All 4 branches missed.">		if(userStatus.equals(ACTIVE) &amp;&amp; roleName.equals(PATIENTS)) {</span>
+<span class="nc" id="L1361">			List&lt;SitePatient&gt;  patients = sitePatientRepository.findByPatientIdAndStatus(userEntity.getId(), INACTIVE);</span>
+<span class="nc bnc" id="L1362" title="All 4 branches missed.">			if(patients!=null &amp;&amp; patients.size()&gt;0) {</span>
+<span class="nc" id="L1363">				patients.forEach((patient)-&gt;{</span>
+<span class="nc" id="L1364">					patient.setStatus(ACTIVE);</span>
+<span class="nc" id="L1365">				});</span>
+<span class="nc" id="L1366">				sitePatientRepository.saveAll(patients);</span>
+			}
+<span class="nc bnc" id="L1368" title="All 4 branches missed.">		}else if(userStatus.equals(INACTIVE) &amp;&amp; roleName.equals(PATIENTS)){</span>
+<span class="nc" id="L1369">			List&lt;SitePatient&gt;  patients = sitePatientRepository.findByPatientIdAndStatus(userEntity.getId(), ACTIVE);</span>
+<span class="nc bnc" id="L1370" title="All 4 branches missed.">			if(patients!=null &amp;&amp; patients.size()&gt;0) {</span>
+<span class="nc" id="L1371">				patients.forEach((patient)-&gt;{</span>
+<span class="nc" id="L1372">					patient.setStatus(INACTIVE);</span>
+<span class="nc" id="L1373">				});</span>
+<span class="nc" id="L1374">				sitePatientRepository.saveAll(patients);</span>
+			}
+<span class="nc bnc" id="L1376" title="All 6 branches missed.">		}else if(userStatus.equals(ACTIVE) &amp;&amp; (roleName.equals(PHYSICIANS) || roleName.equals(MEDICAL_STAFFS))){</span>
+<span class="nc" id="L1377">			SiteUser siteUser = siteUserRepository.findByPhysicianAndStatus(userEntity, INACTIVE);</span>
+<span class="nc" id="L1378">			siteUser.setStatus(ACTIVE);</span>
+<span class="nc" id="L1379">			siteUserRepository.save(siteUser);</span>
+<span class="nc bnc" id="L1380" title="All 6 branches missed.">		}else if(userStatus.equals(INACTIVE) &amp;&amp; (roleName.equals(PHYSICIANS) || roleName.equals(MEDICAL_STAFFS))){</span>
+<span class="nc" id="L1381">			SiteUser siteUser = siteUserRepository.findByPhysicianAndStatus(userEntity, ACTIVE);</span>
+<span class="nc" id="L1382">			siteUser.setStatus(INACTIVE);</span>
+<span class="nc" id="L1383">			siteUserRepository.save(siteUser);</span>
+		}
+<span class="nc" id="L1385">	}</span>
+
+	/**
+	 * addLicenseToSite will allot the license to a site 
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @param licenseQty
+	 * &lt;p&gt;license Quantity &lt;/p&gt;
+	 * @param createdBy
+	 * &lt;p&gt;username of logged in user&lt;/p&gt;
+	 */
+	@Override
+	public void addLicensesToSite(Integer siteId, Integer licenseQty, String createdBy) {
+<span class="pc bpc" id="L1398" title="1 of 2 branches missed.">		if(licenseQty &gt; 0) {</span>
+<span class="fc" id="L1399">			logger.debug(&quot;Site id:&quot;+siteId+&quot; License Quantity:&quot;+licenseQty);</span>
+<span class="fc" id="L1400">			userManagementRepository.createLicenses(siteId,licenseQty,createdBy);</span>
+		}else {
+<span class="nc" id="L1402">			logger.error(&quot;License quantity must be a positive integer.&quot;);</span>
+<span class="nc" id="L1403">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;License quantity must be a positive integer.&quot;);</span>
+		}
+<span class="fc" id="L1405">	}</span>
+
+	/**
+	 * disablePatientFromSite will disable a patient from its site
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @param patientId
+	 * &lt;p&gt;unique patient id&lt;/p&gt;
+	 * @param updatedBy
+	 * &lt;p&gt;username of logged in user&lt;/p&gt;
+	 */
+	@Override
+	public void disablePatientFromSite(Integer siteId, Integer patientId, String updatedBy) {
+<span class="fc" id="L1418">		Site site = new Site();</span>
+<span class="fc" id="L1419">		site.setId(siteId);</span>
+<span class="fc" id="L1420">		User patient = userRepository.findById(patientId).orElse(null);</span>
+<span class="pc bpc" id="L1421" title="1 of 2 branches missed.">		if(patient==null) {</span>
+<span class="nc" id="L1422">			logger.error(&quot;Invalid Patient Id:&quot;+patientId);</span>
+<span class="nc" id="L1423">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Patient Id&quot;);</span>
+		}
+<span class="fc" id="L1425">		SitePatient sitePatient = sitePatientRepository.findBySiteAndPatient(site, patient);</span>
+<span class="fc" id="L1426">		sitePatient.setStatus(INACTIVE);</span>
+<span class="fc" id="L1427">		sitePatient.setUpdatedBy(updatedBy);</span>
+<span class="fc" id="L1428">		sitePatient.setUpdatedDate(new Date());</span>
+<span class="fc" id="L1429">		sitePatientRepository.save(sitePatient);</span>
+<span class="fc" id="L1430">		patient.setStatus(INACTIVE);</span>
+<span class="fc" id="L1431">		logger.debug(&quot;Site id:&quot;+siteId+&quot;patient id:&quot;+patientId+&quot; Status: &quot;+patient.getStatus());</span>
+<span class="fc" id="L1432">		userRepository.save(patient);</span>
+<span class="fc" id="L1433">	}</span>
+
+	/**
+	 * getSiteDetails will retrieves site detail
+	 * @param siteId
+	 * &lt;p&gt;unique site id&lt;/p&gt;
+	 * @return site detail
+	 */
+	@Override
+	public SiteDTO getSiteDetails(Integer siteId) {
+<span class="fc" id="L1443">		SiteDTO siteDTO = new SiteDTO();</span>
+<span class="fc" id="L1444">		Site site = siteRepository.findById(siteId).orElse(null);</span>
+<span class="pc bpc" id="L1445" title="1 of 2 branches missed.">		if(site!=null) {</span>
+<span class="fc" id="L1446">			BeanUtils.copyProperties(site, siteDTO);</span>
+<span class="fc" id="L1447">			siteDTO.setSiteAdminId(site.getSiteAdmin().getId());</span>
+		}else {
+<span class="nc" id="L1449">			logger.error(&quot;Invalid Site id:&quot;+siteId);</span>
+<span class="nc" id="L1450">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Site id.&quot;);</span>
+		}
+<span class="fc" id="L1452">		return siteDTO;</span>
+	}
+
+	@Override
+	public List&lt;LicenseReportDTO&gt; getReport(Integer siteId,Date startDate, Date endDate) {
+<span class="fc" id="L1457">		List&lt;LicenseWorkflow&gt; licenseWorkflow = new ArrayList&lt;LicenseWorkflow&gt;();</span>
+<span class="fc bfc" id="L1458" title="All 4 branches covered.">			if (startDate == null &amp;&amp; endDate == null) {</span>
+<span class="fc" id="L1459">				endDate = DateUtils.addDays(new Date(),1);</span>
+<span class="fc" id="L1460">				startDate = DateUtils.addDays(endDate,-30);</span>
+<span class="fc bfc" id="L1461" title="All 4 branches covered.">			}else if(startDate!=null &amp;&amp; endDate==null){</span>
+<span class="pc bpc" id="L1462" title="1 of 2 branches missed.">				if(startDate.compareTo(new Date())&lt;=0) {</span>
+<span class="fc" id="L1463">					logger.info(&quot;When start date is not null but end date is null&quot;);</span>
+<span class="fc" id="L1464">					endDate = DateUtils.addDays(startDate,31);</span>
+				}else {
+<span class="nc" id="L1466">					logger.error(&quot;Start date must not be a future date.&quot;);</span>
+<span class="nc" id="L1467">					throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Start date must not be a future date.&quot;);</span>
+				}
+<span class="pc bpc" id="L1469" title="1 of 4 branches missed.">			}else if(startDate==null &amp;&amp; endDate!=null){</span>
+<span class="pc bpc" id="L1470" title="1 of 2 branches missed.">				if(!(endDate.compareTo(new Date())&gt;=0)) {</span>
+<span class="fc" id="L1471">					logger.info(&quot;When start date is null but end date is not null&quot;);</span>
+<span class="fc" id="L1472">					startDate = DateUtils.addDays(endDate,-30);</span>
+				}else {
+<span class="nc" id="L1474">					logger.error(&quot;Start date must not be a future date.&quot;);</span>
+<span class="nc" id="L1475">					throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;End date must not be a future date.&quot;);</span>
+				}
+			}
+<span class="fc" id="L1478">			licenseWorkflow = licenseWorkflowRepository.findBySiteIdAndStatusAndCreatedDateBetween(siteId,ASSIGNED,startDate, endDate);</span>
+<span class="pc bpc" id="L1479" title="2 of 4 branches missed.">			if (licenseWorkflow != null &amp;&amp; licenseWorkflow.size()&gt;0)</span>
+<span class="fc" id="L1480">				return (licenseWorkflow).stream().map(this::licenseReport).collect(Collectors.toList());</span>
+			else {
+<span class="nc" id="L1482">				logger.error(&quot;Invalid Request:&quot;+siteId);</span>
+<span class="nc" id="L1483">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Request&quot;);</span>
+			}
+	}
+
+	private LicenseReportDTO licenseReport(LicenseWorkflow license) {
+<span class="fc" id="L1488">		LicenseReportDTO report = new LicenseReportDTO();</span>
+<span class="fc" id="L1489">		report.setLicenseNo(license.getLicenseNumber());</span>
+<span class="fc" id="L1490">		report.setPhysicianId(license.getPhysicianId());</span>
+<span class="fc" id="L1491">		report.setPatientId(license.getPatientId());</span>
+<span class="fc" id="L1492">		SimpleDateFormat sdf = new SimpleDateFormat(&quot;yyyy-MM-dd&quot;);</span>
+<span class="fc" id="L1493">		report.setDate(sdf.format(license.getCreatedDate()));</span>
+<span class="fc" id="L1494">		return report;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

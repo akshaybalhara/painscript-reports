@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditLogRepositoryImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">audit-log-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.auditlog.repositoryimpl</a> &gt; <span class="el_source">AuditLogRepositoryImpl.java</span></div><h1>AuditLogRepositoryImpl.java</h1><pre class="source lang-java linenums">package com.painscript.auditlog.repositoryimpl;
+
+import java.util.Date;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
+import javax.persistence.PersistenceUnit;
+
+import org.springframework.stereotype.Repository;
+
+import com.painscript.auditlog.dto.AuditDTO;
+import com.painscript.auditlog.exception.PainscriptBusinessException;
+import com.painscript.auditlog.model.Audit;
+import com.painscript.auditlog.repository.AuditLogRepository;
+
+/**
+ * AuditLogRepositoryImpl : Implementation class of AuditLogRepository.
+ * 
+ * @author Prolifics
+ *
+ */
+@Repository
+<span class="fc" id="L24">public class AuditLogRepositoryImpl implements AuditLogRepository {</span>
+
+	/**
+	 * EntityManager instance is injected by Spring Framework.
+	 * 
+	 * This is used to manage all the Persistent entities
+	 * defined in the System.
+	 */
+
+	@PersistenceUnit
+	private EntityManagerFactory entityManagerFactory;
+	
+	/**
+	 * pushAuditLog method pushes audit log messages to keep track of all changes
+	 * 
+	 * @param auditRequest 
+	 * &lt;p&gt;Audit Request to log&lt;/p&gt;
+	 */
+	@Override
+	public void pushAuditLog(AuditDTO auditRequest) {
+<span class="fc" id="L44">		Audit auditEntity = mapAuditEntity(auditRequest);</span>
+<span class="fc" id="L45">		EntityManager entityManager = entityManagerFactory.createEntityManager();</span>
+<span class="fc" id="L46">		EntityTransaction entityTransaction = entityManager.getTransaction();</span>
+		try {
+			//Start of transaction
+<span class="fc" id="L49">			entityTransaction.begin();</span>
+			//persist method is used to do insertion of entities into their DB table.
+<span class="fc" id="L51">			entityManager.persist(auditEntity);</span>
+			//commit will actually make this transaction persist in DB.
+<span class="fc" id="L53">			entityTransaction.commit();</span>
+<span class="nc" id="L54">		} catch (RuntimeException e) {</span>
+<span class="nc" id="L55">			entityTransaction.rollback();</span>
+<span class="nc" id="L56">			throw new PainscriptBusinessException(&quot;SMT_000&quot;,&quot;Something went wrong.&quot;);</span>
+		} finally {
+<span class="fc" id="L58">			entityManager.clear();</span>
+<span class="fc" id="L59">			entityManager.close();</span>
+		}
+		
+<span class="fc" id="L62">	}</span>
+
+	/**
+	 * mapAuditEntity will map audit entity with audit DTO
+	 * @param auditRequest
+	 * @return
+	 */
+	private Audit mapAuditEntity(AuditDTO auditRequest) {
+<span class="fc" id="L70">		Audit entity = new Audit();</span>
+<span class="fc" id="L71">		entity.setAuditMessage(auditRequest.getAuditMessage());</span>
+<span class="fc" id="L72">		entity.setClientId(auditRequest.getClientId());</span>
+<span class="fc" id="L73">		entity.setCreatedBy(auditRequest.getUserName());</span>
+<span class="fc" id="L74">		entity.setCreatedDate(new Date());</span>
+<span class="fc" id="L75">		entity.setAuditType(auditRequest.getAuditType());</span>
+<span class="fc" id="L76">		entity.setUserId(auditRequest.getUserId());</span>
+<span class="fc" id="L77">		return entity;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

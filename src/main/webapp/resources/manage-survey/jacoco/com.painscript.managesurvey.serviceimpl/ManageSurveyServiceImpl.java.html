@@ -1,0 +1,735 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ManageSurveyServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">manage-survey-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.managesurvey.serviceimpl</a> &gt; <span class="el_source">ManageSurveyServiceImpl.java</span></div><h1>ManageSurveyServiceImpl.java</h1><pre class="source lang-java linenums">package com.painscript.managesurvey.serviceimpl;
+
+import java.sql.Time;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.painscript.managesurvey.constants.SurveyManagementConstants;
+import com.painscript.managesurvey.dto.EmailDTO;
+import com.painscript.managesurvey.dto.KeyValueDTO;
+import com.painscript.managesurvey.dto.PatientReportDTO;
+import com.painscript.managesurvey.dto.PushNotificationRequestDTO;
+import com.painscript.managesurvey.dto.QuestionDTO;
+import com.painscript.managesurvey.dto.SurveyPatientDTO;
+import com.painscript.managesurvey.dto.SurveyResponseDTO;
+import com.painscript.managesurvey.dto.SurveyResponseWorkflowDTO;
+import com.painscript.managesurvey.dto.UserSummaryDTO;
+import com.painscript.managesurvey.exception.PainscriptBusinessException;
+import com.painscript.managesurvey.model.Disorder;
+import com.painscript.managesurvey.model.Notification;
+import com.painscript.managesurvey.model.PatientDisorder;
+import com.painscript.managesurvey.model.PatientSurveyResponse;
+import com.painscript.managesurvey.model.PatientSurveyResponseWorkflow;
+import com.painscript.managesurvey.model.SurveyPatient;
+import com.painscript.managesurvey.model.SurveyQuestion;
+import com.painscript.managesurvey.model.User;
+import com.painscript.managesurvey.proxies.UtilProxy;
+import com.painscript.managesurvey.repository.NotificationRepository;
+import com.painscript.managesurvey.repository.PatientDisorderRepository;
+import com.painscript.managesurvey.repository.SurveyPatientRepository;
+import com.painscript.managesurvey.repository.SurveyQuestionsRepository;
+import com.painscript.managesurvey.repository.SurveyResponseRepository;
+import com.painscript.managesurvey.repository.SurveyResponseWorkflowRepository;
+import com.painscript.managesurvey.repository.UserRepository;
+import com.painscript.managesurvey.service.ManageSurveyService;
+
+
+/**
+ * ManageSurveyServiceImpl : Implementation class of ManageSurveyService.
+ * 
+ * @author Prolifics.
+ *
+ */
+@Service
+<span class="fc" id="L61">public class ManageSurveyServiceImpl implements ManageSurveyService, SurveyManagementConstants {</span>
+
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L66">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+
+	/**
+	 * SurveyQuestionsRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private SurveyQuestionsRepository surveyQuestionsRepository;
+
+	/**
+	 * SurveyPatientRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private SurveyPatientRepository surveyPatientRepository;
+
+	/**
+	 * SurveyResponseWorkflowRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private SurveyResponseWorkflowRepository sResponseWorkflowRepository;
+
+	/**
+	 * SurveyResponseRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private SurveyResponseRepository sResponseRepository;
+
+	/**
+	 * UserRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private UserRepository userRepository;
+
+	/**
+	 * PatientDisorderRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private PatientDisorderRepository patientDisorderRepository;
+
+	/**
+	 * The UtilProxy to call utility methods using open-feign client.
+	 * UtilProxy Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private UtilProxy utilProxy;
+
+	/**
+	 * NotificationRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private NotificationRepository notificationRepo;
+
+	@Value(&quot;${spring.profiles.active}&quot;)
+	private String activeProfile;
+
+	@Value(&quot;${send.actual.email}&quot;)
+	private boolean sendToActualEmail;
+	
+	/**
+	 * getQuestionsList retrieves all questions based on status
+	 * 
+	 * @param status
+	 * &lt;p&gt;Status of question &lt;/p&gt;
+	 * @return List&lt;QuestionDTO&gt; 
+	 * &lt;p&gt; return the list of questions using Question&lt;DTO&gt; &lt;/p&gt;
+	 */
+	@Override
+	public List&lt;QuestionDTO&gt; getQuestionsList(String status) {
+<span class="fc" id="L133">		List&lt;QuestionDTO&gt; questionsList = new ArrayList&lt;QuestionDTO&gt;();</span>
+<span class="fc" id="L134">		List&lt;SurveyQuestion&gt; questions = new ArrayList&lt;SurveyQuestion&gt;();</span>
+<span class="fc" id="L135">		ObjectMapper mapper = new ObjectMapper();</span>
+<span class="fc bfc" id="L136" title="All 2 branches covered.">		if(status.equalsIgnoreCase(ALL)) {</span>
+<span class="fc" id="L137">			questions = (List&lt;SurveyQuestion&gt;) surveyQuestionsRepository.findAll();</span>
+<span class="fc" id="L138">			logger.debug(&quot;Total Available Questions: &quot;+questions.size());</span>
+		}else {
+<span class="fc" id="L140">			questions = surveyQuestionsRepository.findByStatus(status);</span>
+<span class="fc" id="L141">			logger.debug(&quot;Total &quot;+status+&quot; Questions: &quot;+questions.size());</span>
+		}
+<span class="pc bpc" id="L143" title="2 of 4 branches missed.">		if(questions!=null &amp;&amp; questions.size() &gt; 0) {</span>
+<span class="fc" id="L144">			questions.forEach((question)-&gt;{</span>
+<span class="fc" id="L145">				QuestionDTO questionDTO = new QuestionDTO();</span>
+<span class="fc" id="L146">				BeanUtils.copyProperties(question, questionDTO);</span>
+				try {
+<span class="pc bpc" id="L148" title="1 of 2 branches missed.">					if(question.getOptions()!=null) {</span>
+<span class="fc" id="L149">						questionDTO.setOptions(mapper.readValue(question.getOptions(), JsonNode.class));</span>
+					}
+<span class="nc" id="L151">				} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L152">					logger.debug(&quot;JSON: \n&quot;+question.getOptions());</span>
+<span class="nc" id="L153">					logger.error(&quot;Error occured while paring json: &quot;+e.getMessage());</span>
+<span class="nc" id="L154">					throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L155">				}</span>
+<span class="fc" id="L156">				questionsList.add(questionDTO);</span>
+<span class="fc" id="L157">			});</span>
+		}
+<span class="fc" id="L159">		return 	questionsList;</span>
+	}
+
+
+	/**
+	 * getPatientSurvey returns list of survey based on patient id 
+	 * 
+	 * @param patientId
+	 * 	&lt;p&gt; unique patient id&lt;/p&gt;
+	 * @return List&lt;SurveyPatientDTO&gt;
+	 * 	&lt;p&gt; return list of survey SurveyPatientDTO&lt;/p&gt;
+	 */
+
+	@Override
+	public List&lt;SurveyPatientDTO&gt; getPatientSurvey(Integer patientId) {
+<span class="fc" id="L174">		List&lt;SurveyPatient&gt; patientSurveys = surveyPatientRepository.findByPatientIdAndStatus(patientId,ACTIVE);</span>
+<span class="fc" id="L175">		return (patientSurveys.stream().map(this::getsurveyList).collect(Collectors.toList()));</span>
+	}
+
+	public SurveyPatientDTO getsurveyList(SurveyPatient surveyPatient)
+	{
+<span class="fc" id="L180">		DateFormat df=new SimpleDateFormat(&quot;HH:mm&quot;);</span>
+<span class="fc" id="L181">		SurveyPatientDTO surveyPatientDTO = new SurveyPatientDTO();</span>
+<span class="fc" id="L182">		BeanUtils.copyProperties(surveyPatient, surveyPatientDTO);</span>
+<span class="fc" id="L183">		ObjectMapper mapper = new ObjectMapper();</span>
+		try {
+			//using mapper.readValue we are able to get Json format data
+<span class="fc" id="L186">			surveyPatientDTO.setQuestionnaire(mapper.readValue(surveyPatient.getQuestionnaire(),JsonNode.class));</span>
+<span class="fc" id="L187">			Date startDateTime=new Date(surveyPatient.getStartTime().getTime());</span>
+<span class="fc" id="L188">			surveyPatientDTO.setStartTime(df.format(startDateTime));</span>
+<span class="fc" id="L189">			Date endDateTime=new Date(surveyPatient.getEndTime().getTime());</span>
+<span class="fc" id="L190">			surveyPatientDTO.setEndTime(df.format(endDateTime));</span>
+<span class="nc" id="L191">		} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L192">			logger.info(&quot;Questionnaire JSON: &quot;+surveyPatient.getQuestionnaire());</span>
+<span class="nc" id="L193">			logger.error(e.getMessage());</span>
+<span class="nc" id="L194">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Exception occured while parsing questionnaire json.&quot;);</span>
+<span class="fc" id="L195">		}</span>
+<span class="fc" id="L196">		surveyPatientDTO.setSubmittedHistory(null);</span>
+<span class="fc" id="L197">		return surveyPatientDTO;</span>
+	}
+
+	/**
+	 * getSurvey returns a particular survey based on patient survey id
+	 * 
+	 * @param patientSurveyId 
+	 * &lt;p&gt;unique patient survey id&lt;/p&gt;
+	 * @return SurveyPatientDTO 
+	 * 
+	 * &lt;p&gt; return a particular survey using SurveyPatientDTO
+	 */
+
+	@Override
+	public SurveyPatientDTO getSurvey(Integer patientSurveyId) {
+<span class="fc" id="L212">		SurveyPatientDTO surveyDTO=new SurveyPatientDTO();</span>
+<span class="pc bpc" id="L213" title="2 of 4 branches missed.">		if(patientSurveyId!=null &amp;&amp; patientSurveyId&gt;0) {</span>
+<span class="fc" id="L214">			SurveyPatient survey = surveyPatientRepository.findById(patientSurveyId).orElse(null);</span>
+<span class="pc bpc" id="L215" title="1 of 2 branches missed.">			if(survey!=null) {</span>
+<span class="fc" id="L216">				BeanUtils.copyProperties(survey, surveyDTO);</span>
+<span class="fc" id="L217">				surveyDTO.setPatientId(survey.getPatientId());</span>
+<span class="fc" id="L218">				logger.debug(&quot;\nPatientId: &quot;+survey.getPatientId()</span>
+<span class="fc" id="L219">				+&quot;\nStart Date: &quot;+survey.getStartDate()+&quot; End Date: &quot;+survey.getEndDate()</span>
+<span class="fc" id="L220">				+&quot;\nStart Time: &quot;+survey.getStartTime()+&quot; End Time: &quot;+survey.getEndTime());</span>
+<span class="fc" id="L221">				ObjectMapper mapper = new ObjectMapper();</span>
+				try {
+<span class="fc" id="L223">					surveyDTO.setQuestionnaire(mapper.readValue(survey.getQuestionnaire(),JsonNode.class));</span>
+<span class="nc" id="L224">				} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L225">					throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L226">				}</span>
+<span class="fc" id="L227">				return surveyDTO;</span>
+			}else {
+<span class="nc" id="L229">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid patientSurveyId: &quot;+patientSurveyId);</span>
+			}
+		}else {
+<span class="nc" id="L232">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid patientSurveyId: &quot;+patientSurveyId);</span>
+		}
+			
+	}
+
+
+	/**
+	 * getEscalatedSurvey returns list of Escalated survey based on physician id
+	 * 
+	 * @param physicianId
+	 * 	&lt;p&gt; unique physician id&lt;/p&gt;
+	 * @return List&lt;SurveyResponseDTO&gt;
+	 * 	&lt;p&gt; return list of escalated survey using SurveyResponseDTO&lt;/p&gt;
+	 */
+	@Override
+	public List&lt;SurveyResponseDTO&gt; getEscalatedSurvey(Integer physicianId) {
+<span class="fc" id="L248">		List&lt;PatientSurveyResponse&gt; sResponse =  sResponseRepository.findByPhysicianIdAndStatus(physicianId,ESCALATED);</span>
+<span class="pc bpc" id="L249" title="1 of 4 branches missed.">		if(sResponse!=null &amp;&amp; sResponse.size()&gt;0){</span>
+<span class="fc" id="L250">			return (sResponse.stream().map(this::getEsclatedTo).collect(Collectors.toList()));</span>
+		}else {
+<span class="fc" id="L252">			logger.debug(&quot;No Escalated Survey Found.&quot;);</span>
+<span class="fc" id="L253">			return null;</span>
+		}
+	}
+
+	public SurveyResponseDTO getEsclatedTo(PatientSurveyResponse sResponseFlow){
+<span class="fc" id="L258">		SurveyResponseDTO sResponseDTO = new SurveyResponseDTO();</span>
+<span class="fc" id="L259">		BeanUtils.copyProperties(sResponseFlow, sResponseDTO);</span>
+<span class="fc" id="L260">		sResponseDTO.setSurveyPatientId(sResponseFlow.getSurveyPatientId());</span>
+
+<span class="fc" id="L262">		ObjectMapper mapper = new ObjectMapper(); </span>
+		try {
+<span class="fc" id="L264">			sResponseDTO.setResponse(mapper.readValue(sResponseFlow.getResponse(), JsonNode.class));</span>
+<span class="nc" id="L265">		} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L266">			logger.info(&quot;Response JSON: &quot;+sResponseFlow.getResponse());</span>
+<span class="nc" id="L267">			logger.error(e.getMessage());</span>
+<span class="nc" id="L268">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Exception occured while parsing response json.&quot;);</span>
+<span class="fc" id="L269">		}</span>
+<span class="fc" id="L270">		return sResponseDTO;</span>
+	}
+
+
+	/**
+	 * getEscalatedNotes returns list of Escalated Survey Notes based on survey response id
+	 * 
+	 * @param SurveyResponseId
+	 * 	&lt;p&gt; unique Survey Response id&lt;/p&gt;
+	 * @return List&lt;SurveyResponseWorkflowDTO&gt;
+	 * 	&lt;p&gt; return list of escalated survey's note using SurveyResponseWorkflowDTO&lt;/p&gt;
+	 */
+
+	public List&lt;SurveyResponseWorkflowDTO&gt; getEscalatedNotes(Integer surveyResponseId){
+<span class="fc" id="L284">		List&lt;PatientSurveyResponseWorkflow&gt; sResponseFlows =  sResponseWorkflowRepository.findByPatientSurveyResponseIdAndReviewStatus(surveyResponseId,ESCALATED);</span>
+<span class="pc bpc" id="L285" title="1 of 4 branches missed.">		if(sResponseFlows!=null &amp;&amp; sResponseFlows.size()&gt;0){</span>
+<span class="fc" id="L286">			return (sResponseFlows.stream().map(this::getEsclatedNote).collect(Collectors.toList()));</span>
+		}else {
+<span class="fc" id="L288">			logger.debug(&quot;No Escalated Survey Found.&quot;);</span>
+<span class="fc" id="L289">			return null;</span>
+		}
+	}
+
+	/**
+	 * getEsclatedNote map entity data with DTO
+	 * @param sResponseFlow
+	 * @return Survey Response Workflow DTO
+	 */
+	public SurveyResponseWorkflowDTO getEsclatedNote(PatientSurveyResponseWorkflow sResponseFlow){
+<span class="fc" id="L299">		SurveyResponseWorkflowDTO sResponseDTO = new SurveyResponseWorkflowDTO();</span>
+<span class="fc" id="L300">		String escalatedBy = null, escalatedTo = null; </span>
+<span class="pc bpc" id="L301" title="1 of 2 branches missed.">		if(sResponseFlow.getEscalatedTo()!=null){</span>
+<span class="fc" id="L302">			User escalatedToUser = userRepository.findById(sResponseFlow.getEscalatedTo()).orElse(null);</span>
+<span class="pc bpc" id="L303" title="1 of 2 branches missed.">			if(escalatedToUser!=null) {</span>
+<span class="fc" id="L304">				escalatedTo = escalatedToUser.getUsername();</span>
+<span class="fc" id="L305">				String nameTo = escalatedToUser.getFirstName()+&quot; &quot;+escalatedToUser.getLastName();</span>
+<span class="fc" id="L306">				sResponseDTO.setEsclatedToName(nameTo);</span>
+			}
+		}
+<span class="pc bpc" id="L309" title="1 of 2 branches missed.">		if(sResponseFlow.getEscalatedBy()!=null){</span>
+<span class="fc" id="L310">			User escalatedByUser = userRepository.findById(sResponseFlow.getEscalatedBy()).orElse(null);</span>
+<span class="pc bpc" id="L311" title="1 of 2 branches missed.">			if(escalatedByUser!=null) {</span>
+<span class="fc" id="L312">				escalatedBy = escalatedByUser.getUsername();</span>
+<span class="fc" id="L313">				String nameBy = escalatedByUser.getFirstName()+&quot; &quot;+escalatedByUser.getLastName();</span>
+<span class="fc" id="L314">				sResponseDTO.setEsclatedByName(nameBy);</span>
+			}
+		}
+<span class="fc" id="L317">		sResponseDTO.setNotes(sResponseFlow.getNotes());</span>
+<span class="fc" id="L318">		sResponseDTO.setCreatedDate(sResponseFlow.getCreatedDate());</span>
+<span class="fc" id="L319">		logger.debug(&quot;\nEscalatedBy: &quot;+escalatedBy+&quot; EscalatedTo: &quot;+escalatedTo</span>
+<span class="fc" id="L320">		+&quot;\nNotes: &quot;+sResponseDTO.getNotes());</span>
+<span class="fc" id="L321">		return sResponseDTO;</span>
+	}
+
+	/**
+	 * getSurveyResponse returns a particular patient survey response based on patient survey response id
+	 * 
+	 * @param patientSurveyResponseId 
+	 * &lt;p&gt;unique patient survey response id&lt;/p&gt;
+	 * @return SurveyPatientResponseDTO 
+	 * 
+	 * &lt;p&gt; return a particular survey response using SurveyPatientResponseDTO
+	 */
+	@Override
+	public SurveyResponseDTO getSurveyResponse(Integer patientSurveyResponseId) {
+<span class="fc" id="L335">		SurveyResponseDTO surveyPatientResponseDTO = new SurveyResponseDTO();</span>
+<span class="pc bpc" id="L336" title="2 of 4 branches missed.">		if(patientSurveyResponseId!=null &amp;&amp; patientSurveyResponseId&gt;0) {</span>
+<span class="fc" id="L337">			PatientSurveyResponse surveyResponse = sResponseRepository.findById(patientSurveyResponseId).orElse(null);</span>
+<span class="pc bpc" id="L338" title="1 of 2 branches missed.">			if(surveyResponse==null )</span>
+<span class="nc" id="L339">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;No Survey Found&quot;);</span>
+<span class="fc" id="L340">			BeanUtils.copyProperties(surveyResponse, surveyPatientResponseDTO);</span>
+<span class="fc" id="L341">			logger.debug(&quot;Submitted By: &quot;+surveyResponse.getPatientId());</span>
+<span class="fc" id="L342">			surveyPatientResponseDTO.setPatientId(surveyResponse.getPatientId());</span>
+<span class="fc" id="L343">			surveyPatientResponseDTO.setSurveyPatientId(surveyResponse.getSurveyPatientId());</span>
+<span class="fc" id="L344">			logger.debug(&quot;Survey Patient Id: &quot;+surveyResponse.getSurveyPatientId());</span>
+<span class="fc" id="L345">			ObjectMapper mapper = new ObjectMapper();</span>
+			try {
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">				if(surveyResponse.getResponse()!=null) {</span>
+<span class="fc" id="L348">					surveyPatientResponseDTO.setResponse(mapper.readValue(surveyResponse.getResponse(),JsonNode.class));</span>
+				}else {
+<span class="nc" id="L350">					surveyPatientResponseDTO.setResponse(null);</span>
+				}
+<span class="nc" id="L352">			} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L353">				logger.info(&quot;Response JSON: &quot;+surveyResponse.getResponse());</span>
+<span class="nc" id="L354">				logger.error(e.getMessage());</span>
+<span class="nc" id="L355">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Exception occured while parsing response json.&quot;);</span>
+<span class="fc" id="L356">			}</span>
+<span class="pc bpc" id="L357" title="3 of 8 branches missed.">			if(surveyResponse.getStatus().equals(COMPLETED) &amp;&amp; (surveyResponse.getReviewRemark()==null || (surveyResponse.getReviewRemark()!=null &amp;&amp; !surveyResponse.getReviewRemark().equals(SKIPPED)))) {</span>
+<span class="fc" id="L358">				List&lt;PatientSurveyResponseWorkflow&gt; sResponseWorkflows = surveyResponse.getPatientSurveyResponseWorkflows();</span>
+<span class="fc" id="L359">				sResponseWorkflows.forEach((workflowEntry)-&gt;{</span>
+<span class="fc" id="L360">					surveyPatientResponseDTO.setReviewStart(workflowEntry.getReviewStart());</span>
+<span class="fc" id="L361">					surveyPatientResponseDTO.setReviewEnd(workflowEntry.getReviewEnd());</span>
+<span class="fc" id="L362">				});</span>
+			}
+<span class="fc" id="L364">			return surveyPatientResponseDTO;</span>
+		}
+		else
+<span class="nc" id="L367">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid request&quot;);</span>
+	}
+
+	/**
+	 * assignSurvey assign survey to patient 
+	 * 
+	 * @param patientId
+	 * 	&lt;p&gt; unique patient id&lt;/p&gt;
+	 * @param SurveyPatientDTO
+	 *  &lt;p&gt; DTO of SurveyPatient
+	 */
+
+	@Override
+	public Integer assignSurveyToPatient(SurveyPatientDTO surveyPatientDTO,Integer patientId) {
+<span class="fc" id="L381">		formatStartAndEndTime(surveyPatientDTO);</span>
+<span class="fc" id="L382">		SurveyPatient surveyPatientEntity = new SurveyPatient();</span>
+<span class="fc" id="L383">		BeanUtils.copyProperties(surveyPatientDTO, surveyPatientEntity);</span>
+<span class="fc" id="L384">		String welcomeMessage = surveyPatientDTO.getWelcomeMessage();</span>
+<span class="pc bpc" id="L385" title="3 of 4 branches missed.">		if(welcomeMessage!=null &amp;&amp; !welcomeMessage.isEmpty()) {</span>
+<span class="nc" id="L386">			surveyPatientEntity.setWelcomeMessage(welcomeMessage);</span>
+		}else {
+<span class="fc" id="L388">			surveyPatientEntity.setWelcomeMessage(DEFAULT_WELCOME_MSG);</span>
+		}
+<span class="fc" id="L390">		surveyPatientEntity.setStartTime(Time.valueOf(surveyPatientDTO.getStartTime()));</span>
+<span class="fc" id="L391">		surveyPatientEntity.setEndTime(Time.valueOf(surveyPatientDTO.getEndTime()));</span>
+<span class="fc" id="L392">		surveyPatientEntity.setPatientId(patientId);</span>
+<span class="fc" id="L393">		surveyPatientEntity.setQuestionnaire(surveyPatientDTO.getQuestionnaire().toPrettyString());</span>
+<span class="fc" id="L394">		surveyPatientEntity.setCreatedDate(new Date());</span>
+<span class="fc" id="L395">		surveyPatientEntity.setStatus(ACTIVE);</span>
+<span class="fc" id="L396">		surveyPatientEntity = surveyPatientRepository.save(surveyPatientEntity);</span>
+		//Notify patient that a survey is assigned to him.
+<span class="pc bpc" id="L398" title="1 of 2 branches missed.">		if(surveyPatientEntity.getId()!=null) {</span>
+			try {
+<span class="fc" id="L400">				Map&lt;String,String&gt; dataMap = new HashMap&lt;String, String&gt;();</span>
+<span class="fc" id="L401">				dataMap.put(&quot;context&quot;, SURVEY_ASSIGNED_CTX);</span>
+<span class="fc" id="L402">				dataMap.put(&quot;identifier&quot;, Integer.toString(surveyPatientEntity.getId()));</span>
+<span class="fc" id="L403">				ObjectMapper mapper = new ObjectMapper();</span>
+<span class="fc" id="L404">				JsonNode jsonData = mapper.valueToTree(dataMap);</span>
+<span class="fc" id="L405">				String jsonString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonData);</span>
+<span class="fc" id="L406">				Notification notificationEntity = new Notification(SURVEY_ASSIGNED_MSG, SURVEY_ASSIGNED_CTX,jsonString);</span>
+<span class="fc" id="L407">				saveNotification(notificationEntity,patientId,surveyPatientDTO.getCreatedBy());</span>
+<span class="fc" id="L408">				User patient = userRepository.findById(patientId).orElse(null);</span>
+<span class="pc bpc" id="L409" title="1 of 2 branches missed.">				if(patient!=null) {</span>
+<span class="fc" id="L410">					sendNotificationToToken(SURVEY_ASSIGNED_CTX, SURVEY_ASSIGNED_MSG ,patient.getDeviceToken());</span>
+				}else {
+<span class="nc" id="L412">					logger.debug(&quot;Unable to send push notification because patient object was null.&quot;);</span>
+				}
+<span class="nc" id="L414">			} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L415">				logger.error(&quot;Exception occured while processing json: &quot;+e.getMessage());</span>
+<span class="nc" id="L416">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L417">			}</span>
+		}
+<span class="fc" id="L419">		return surveyPatientEntity.getId();</span>
+	}
+
+	private void formatStartAndEndTime(SurveyPatientDTO surveyPatientDTO) {
+<span class="fc" id="L423">		String startTime = surveyPatientDTO.getStartTime();</span>
+<span class="fc" id="L424">		String endTime = surveyPatientDTO.getEndTime();</span>
+<span class="fc" id="L425">		logger.debug(&quot;Start Date: &quot;+surveyPatientDTO.getStartDate()+&quot; End Date: &quot;+surveyPatientDTO.getEndDate());</span>
+<span class="fc" id="L426">		logger.debug(&quot;Before formatting = Start Time: &quot;+startTime+&quot; End Time: &quot;+endTime);</span>
+		//Reset seconds of start and end time to 00
+<span class="pc bpc" id="L428" title="3 of 6 branches missed.">		if(startTime!=null &amp;&amp; !startTime.isEmpty() &amp;&amp; startTime.length() &gt; 6) {</span>
+<span class="fc" id="L429">			startTime = startTime.substring(0, 6)+&quot;00&quot;;</span>
+<span class="fc" id="L430">			surveyPatientDTO.setStartTime(startTime);</span>
+		}
+
+<span class="pc bpc" id="L433" title="3 of 6 branches missed.">		if(endTime!=null &amp;&amp; !endTime.isEmpty() &amp;&amp; endTime.length() &gt; 6) {</span>
+<span class="fc" id="L434">			endTime = endTime.substring(0, 6)+&quot;00&quot;;</span>
+<span class="fc" id="L435">			surveyPatientDTO.setEndTime(endTime);</span>
+		}
+<span class="fc" id="L437">		logger.debug(&quot;After formatting = Start Time: &quot;+startTime+&quot; End Time: &quot;+endTime);</span>
+<span class="fc" id="L438">	}</span>
+
+	/**
+	 * updateSurvey update survey of patient 
+	 * 
+	 * @param patientSurveyId, SurveyPatientDTO
+	 * 	&lt;p&gt; unique patient survey id&lt;/p&gt;
+	 * &lt;p&gt;DTO of SurveyPatient
+	 * @return List&lt;StatusDTO&gt;
+	 * 	&lt;p&gt; status of updating survey of patient&lt;/p&gt;
+	 */
+	public Integer updatePatientSurvey(SurveyPatientDTO surveyPatientDTO, Integer id) {
+<span class="fc" id="L450">		SurveyPatient survey = new SurveyPatient();</span>
+<span class="pc bpc" id="L451" title="1 of 2 branches missed.">		if(surveyPatientDTO!=null) {</span>
+<span class="fc" id="L452">			survey = surveyPatientRepository.findById(id).orElse(null);</span>
+<span class="pc bpc" id="L453" title="1 of 2 branches missed.">			if(survey==null)</span>
+<span class="nc" id="L454">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Survey Not Found&quot;);</span>
+<span class="fc" id="L455">			formatStartAndEndTime(surveyPatientDTO);</span>
+<span class="pc bpc" id="L456" title="1 of 2 branches missed.">			survey.setTitle(surveyPatientDTO.getTitle()==null?survey.getTitle():surveyPatientDTO.getTitle());</span>
+<span class="pc bpc" id="L457" title="1 of 2 branches missed.">			survey.setStartDate(surveyPatientDTO.getStartDate()==null?survey.getStartDate():surveyPatientDTO.getStartDate());</span>
+<span class="pc bpc" id="L458" title="1 of 2 branches missed.">			survey.setEndDate(surveyPatientDTO.getEndDate()==null?survey.getEndDate():surveyPatientDTO.getEndDate());</span>
+<span class="pc bpc" id="L459" title="1 of 2 branches missed.">			survey.setStartTime(surveyPatientDTO.getStartTime()==null?survey.getStartTime():Time.valueOf(surveyPatientDTO.getStartTime()));</span>
+<span class="pc bpc" id="L460" title="1 of 2 branches missed.">			survey.setEndTime(surveyPatientDTO.getEndTime()==null?survey.getEndTime():Time.valueOf(surveyPatientDTO.getEndTime()));</span>
+<span class="pc bpc" id="L461" title="1 of 2 branches missed.">			survey.setFrequency(surveyPatientDTO.getFrequency()==null?survey.getFrequency():surveyPatientDTO.getFrequency());</span>
+<span class="fc" id="L462">			String welcomeMessage = surveyPatientDTO.getWelcomeMessage();</span>
+<span class="pc bpc" id="L463" title="3 of 4 branches missed.">			if(welcomeMessage!=null &amp;&amp; !welcomeMessage.isEmpty()) {</span>
+<span class="nc" id="L464">				survey.setWelcomeMessage(welcomeMessage);</span>
+			}else {
+<span class="fc" id="L466">				survey.setWelcomeMessage(DEFAULT_WELCOME_MSG);</span>
+			}
+<span class="pc bpc" id="L468" title="1 of 2 branches missed.">			survey.setStatus(surveyPatientDTO.getStatus()==null?survey.getStatus():surveyPatientDTO.getStatus());</span>
+<span class="fc" id="L469">			survey.setPatientId(survey.getPatientId());</span>
+<span class="fc" id="L470">			survey.setUpdatedDate(new Date());</span>
+<span class="pc bpc" id="L471" title="1 of 2 branches missed.">			survey.setQuestionnaire(surveyPatientDTO.getQuestionnaire()==null?survey.getQuestionnaire():surveyPatientDTO.getQuestionnaire().toPrettyString());</span>
+<span class="fc" id="L472">			surveyPatientRepository.save(survey);</span>
+<span class="fc" id="L473">		}else</span>
+<span class="nc" id="L474">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Request&quot;);</span>
+
+<span class="fc" id="L476">		return survey.getId();</span>
+	}
+	/**
+	 * Saves notification entry in DB
+	 * 
+	 * @param notificationEntity
+	 * @param createdBy
+	 */
+	private void saveNotification(Notification notificationEntity,Integer userId, String createdBy) {
+<span class="fc" id="L485">		notificationEntity.setReadFlag((byte) 0);</span>
+<span class="fc" id="L486">		notificationEntity.setCreatedBy(createdBy);</span>
+<span class="fc" id="L487">		notificationEntity.setUserId(userId);</span>
+<span class="fc" id="L488">		notificationEntity.setStatus(ACTIVE);</span>
+<span class="fc" id="L489">		notificationEntity.setCreatedDate(new Date());</span>
+<span class="fc" id="L490">		logger.info(&quot;Notification sent to user id: &quot;+userId);</span>
+<span class="fc" id="L491">		notificationRepo.save(notificationEntity);</span>
+<span class="fc" id="L492">	}</span>
+
+	/**
+	 * @param notificationTitle
+	 * @param notificationMessage
+	 * @param token
+	 */
+	private void sendNotificationToToken(String notificationTitle,String notificationMessage, String token) {		
+<span class="fc" id="L500">		PushNotificationRequestDTO notificationRequest = new PushNotificationRequestDTO(notificationTitle, notificationMessage, null);</span>
+<span class="fc" id="L501">		notificationRequest.setToken(token);</span>
+<span class="pc bpc" id="L502" title="1 of 4 branches missed.">		if(token!=null &amp;&amp; !token.isEmpty()) {</span>
+<span class="fc" id="L503">			utilProxy.sendNotification(notificationRequest);</span>
+		}
+<span class="fc" id="L505">	}</span>
+
+	/**
+	 * getPatientSummary method is used to get all information about patient.
+	 * @param patientId
+	 * &lt;p&gt;unique patientId
+	 * @return UserSummaryDTO
+	 */
+	@Override
+	public UserSummaryDTO getPatientSummary(Integer patientId) {
+<span class="fc" id="L515">		UserSummaryDTO userSummaryDTO = new UserSummaryDTO();</span>
+<span class="fc" id="L516">		SimpleDateFormat sdformat = new SimpleDateFormat(&quot;yyyy-MM-dd&quot;);</span>
+<span class="fc" id="L517">		User patient = userRepository.findById(patientId).orElse(null);</span>
+<span class="pc bpc" id="L518" title="1 of 2 branches missed.">		if(patient!=null) {</span>
+<span class="fc" id="L519">			logger.debug(&quot;Patient Username: &quot;+patient.getUsername());</span>
+<span class="fc" id="L520">			userSummaryDTO.setUserId(patient.getId());</span>
+<span class="fc" id="L521">			userSummaryDTO.setDiagnosisRemarks(patient.getAdditionalRemarks());</span>
+		}else {
+<span class="nc" id="L523">			logger.debug(&quot;Invalid patient id: &quot;+patientId);</span>
+<span class="nc" id="L524">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid patient id.&quot;);</span>
+		}
+		//Set patient disorders
+<span class="fc" id="L527">		List&lt;KeyValueDTO&gt; disorders = new ArrayList&lt;KeyValueDTO&gt;();</span>
+<span class="fc" id="L528">		List&lt;PatientDisorder&gt; disordersList = patientDisorderRepository.findByPatientId(patientId);</span>
+<span class="pc bpc" id="L529" title="2 of 4 branches missed.">		if(disordersList!=null &amp;&amp; disordersList.size() &gt; 0) {</span>
+<span class="fc" id="L530">			disordersList.forEach((item) -&gt; {</span>
+<span class="fc" id="L531">				KeyValueDTO keyValueDTO = new KeyValueDTO();</span>
+<span class="fc" id="L532">				Disorder disorder = item.getDisorder();</span>
+<span class="fc" id="L533">				keyValueDTO.setId(disorder.getId());</span>
+<span class="fc" id="L534">				keyValueDTO.setName(disorder.getDisorderName());</span>
+<span class="fc" id="L535">				keyValueDTO.setValue(disorder.getDescription());</span>
+<span class="fc" id="L536">				disorders.add(keyValueDTO);</span>
+<span class="fc" id="L537">			});</span>
+		}
+<span class="fc" id="L539">		userSummaryDTO.setDisorders(disorders);</span>
+		//Get patient surveys
+<span class="fc" id="L541">		List&lt;SurveyPatientDTO&gt; surveyList = getPatientSurvey(patientId);</span>
+<span class="pc bpc" id="L542" title="2 of 4 branches missed.">		if(surveyList!=null &amp;&amp; surveyList.size() &gt; 0) {</span>
+<span class="fc" id="L543">			logger.debug(&quot;Submitted History:&quot;);</span>
+<span class="fc" id="L544">			surveyList.forEach((survey)-&gt;{</span>
+<span class="fc" id="L545">				List&lt;Date&gt; submittedHistory = new ArrayList&lt;Date&gt;();</span>
+				//Get Submitted History
+<span class="fc" id="L547">				List&lt;PatientSurveyResponse&gt; submittedSurveys = sResponseRepository.findBySurveyPatientId(survey.getId());</span>
+<span class="fc" id="L548">				submittedSurveys.forEach((submittedSurvey)-&gt;{</span>
+					try {
+<span class="fc" id="L550">						Date submittedDate = sdformat.parse(sdformat.format(submittedSurvey.getCreatedDate()));</span>
+<span class="fc" id="L551">						Date currentDate = sdformat.parse(sdformat.format(new Date()));</span>
+<span class="pc bpc" id="L552" title="2 of 6 branches missed.">						if(currentDate.compareTo(submittedDate) == 0 &amp;&amp; submittedSurvey.getScore()!=null &amp;&amp; submittedSurvey.getScore() &gt;= 0) {</span>
+<span class="fc" id="L553">							logger.debug(submittedSurvey.getCreatedDate().toString());</span>
+<span class="fc" id="L554">							submittedHistory.add(submittedSurvey.getCreatedDate());</span>
+						}
+<span class="nc" id="L556">					} catch (ParseException e) {</span>
+<span class="nc" id="L557">						throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L558">					}</span>
+<span class="fc" id="L559">				});</span>
+<span class="fc bfc" id="L560" title="All 2 branches covered.">				if(submittedHistory.size() &gt; 0) {</span>
+<span class="fc" id="L561">					survey.setSubmittedHistory(submittedHistory);</span>
+				}else {
+<span class="fc" id="L563">					survey.setSubmittedHistory(null);</span>
+				}
+<span class="fc" id="L565">			});</span>
+		}
+<span class="fc" id="L567">		userSummaryDTO.setSurveys(surveyList);</span>
+<span class="fc" id="L568">		return userSummaryDTO;</span>
+	}
+
+
+	/**
+	 * setPatientSurveyResponse set the response from patient using patient id 
+	 * 
+	 * @param patientId, surveyId, surveyResponseDTO
+	 *  &lt;p&gt; unique patient id &lt;/p&gt;
+	 * 	&lt;p&gt; unique survey id&lt;/p&gt;
+	 *  &lt;p&gt; DTO of survetResponse
+	 */
+
+	public Integer savePatientSurveyResponse(SurveyResponseDTO surveyResponseDTO, Integer patientId, Integer surveyId){
+<span class="pc bpc" id="L582" title="1 of 2 branches missed.">		if(surveyResponseDTO!=null) {</span>
+<span class="fc" id="L583">			PatientSurveyResponse responseEntity = new PatientSurveyResponse();</span>
+<span class="fc" id="L584">			responseEntity.setSurveyPatientId(surveyId);</span>
+<span class="fc" id="L585">			responseEntity.setPatientId(patientId);</span>
+<span class="fc bfc" id="L586" title="All 2 branches covered.">			if(surveyResponseDTO.getResponse()!=null) {</span>
+<span class="fc" id="L587">				responseEntity.setResponse(surveyResponseDTO.getResponse().toPrettyString());</span>
+<span class="fc" id="L588">				logger.debug(&quot;Submitted Response:\n&quot;+surveyResponseDTO.getResponse().toPrettyString());</span>
+			}else {
+<span class="fc" id="L590">				logger.debug(&quot;Survey response can't be null&quot;);</span>
+<span class="fc" id="L591">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Survey response can't be null&quot;);</span>
+			}
+<span class="fc" id="L593">			responseEntity.setStatus(PENDING);</span>
+<span class="fc" id="L594">			responseEntity.setCreatedDate(new Date());</span>
+<span class="fc" id="L595">			responseEntity.setCreatedBy(surveyResponseDTO.getCreatedBy());</span>
+			//save in Database
+<span class="fc" id="L597">			responseEntity = sResponseRepository.save(responseEntity);</span>
+<span class="fc" id="L598">			return responseEntity.getId();</span>
+		}else{
+<span class="nc" id="L600">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Request&quot;);</span>
+		}
+	} 
+
+	/**
+	 * reviewSurvey Review survey of patient 
+	 * 
+	 * @param patientSurveyResponseId, SurveyResponseDTO
+	 * 	&lt;p&gt; unique survey response id&lt;/p&gt;
+	 * &lt;p&gt;DTO of SurveyResponse
+	 * @return List&lt;StatusDTO&gt;
+	 * 	&lt;p&gt; status of reviewing survey of patient&lt;/p&gt;
+	 */
+
+	@Override
+	public Integer reviewSurvey(SurveyResponseDTO surveyResponse, Integer loggedUserId) {
+<span class="fc" id="L616">		PatientSurveyResponse survey = new PatientSurveyResponse();	</span>
+<span class="pc bpc" id="L617" title="1 of 2 branches missed.">		if(surveyResponse!=null) {</span>
+<span class="fc" id="L618">			survey = sResponseRepository.findById(surveyResponse.getId()).orElse(null);</span>
+<span class="pc bpc" id="L619" title="1 of 2 branches missed.">			if (survey == null)</span>
+<span class="nc" id="L620">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Survey Id&quot;);</span>
+<span class="pc bpc" id="L621" title="1 of 2 branches missed.">			survey.setReviewRemark(surveyResponse.getReviewRemark()==null?survey.getReviewRemark():surveyResponse.getReviewRemark());</span>
+<span class="pc bpc" id="L622" title="1 of 2 branches missed.">			survey.setStatus(surveyResponse.getStatus()==null?survey.getStatus():surveyResponse.getStatus());</span>
+<span class="pc bpc" id="L623" title="1 of 2 branches missed.">			int totalReviewTime = survey.getTotalReviewTime()==null?0:survey.getTotalReviewTime();</span>
+<span class="pc bpc" id="L624" title="1 of 2 branches missed.">			if(surveyResponse.getTotalReviewTime()!=null) {</span>
+<span class="fc" id="L625">				totalReviewTime = totalReviewTime + surveyResponse.getTotalReviewTime();</span>
+			}
+<span class="fc" id="L627">			survey.setTotalReviewTime(totalReviewTime);</span>
+<span class="fc" id="L628">			survey.setUpdatedDate(new Date());</span>
+<span class="fc" id="L629">			survey.setUpdatedBy(surveyResponse.getUpdatedBy());</span>
+<span class="pc bpc" id="L630" title="1 of 2 branches missed.">			survey.setPhysicianId(surveyResponse.getPhysicianId()==null?survey.getPhysicianId():surveyResponse.getPhysicianId());</span>
+<span class="fc" id="L631">			logger.debug(&quot;Reviewed By:&quot;+survey.getPhysicianId()+&quot; Total time taken: &quot;+totalReviewTime+&quot; Status: &quot;+survey.getStatus());</span>
+<span class="fc" id="L632">			sResponseRepository.save(survey);</span>
+			//Record it in workflow table
+<span class="fc" id="L634">			PatientSurveyResponseWorkflow wflow = new PatientSurveyResponseWorkflow();</span>
+<span class="fc" id="L635">			wflow.setPatientSurveyResponseId(survey.getId());</span>
+<span class="fc" id="L636">			wflow.setReviewEnd(surveyResponse.getReviewEnd());</span>
+<span class="fc" id="L637">			wflow.setReviewTime(surveyResponse.getTotalReviewTime());</span>
+<span class="fc" id="L638">			wflow.setReviewStart(surveyResponse.getReviewStart());</span>
+<span class="fc" id="L639">			wflow.setReviewStatus(surveyResponse.getStatus());</span>
+<span class="fc" id="L640">			wflow.setNotes(surveyResponse.getNotes());</span>
+<span class="fc bfc" id="L641" title="All 2 branches covered.">			if(surveyResponse.getStatus().equals(ESCALATED)) {</span>
+<span class="fc" id="L642">				wflow.setEscalatedBy(loggedUserId);</span>
+<span class="fc" id="L643">				wflow.setEscalatedTo(survey.getPhysicianId());</span>
+			}
+<span class="fc" id="L645">			wflow.setCreatedDate(new Date());</span>
+<span class="fc" id="L646">			wflow.setCreatedBy(surveyResponse.getUpdatedBy());</span>
+<span class="fc" id="L647">			sResponseWorkflowRepository.save(wflow);</span>
+			//TODO: In future we might need to round off total Review time with modulo 60 within same condition
+<span class="fc bfc" id="L649" title="All 2 branches covered.">			if(surveyResponse.getStatus().equals(ESCALATED)) {</span>
+				//Notify physician to whom the survey is escalated.
+<span class="fc" id="L651">				User physician = userRepository.findById(survey.getPhysicianId()).orElse(null);</span>
+<span class="fc" id="L652">				String emailTo = &quot;&quot;;</span>
+<span class="pc bpc" id="L653" title="1 of 2 branches missed.">				if(physician!=null) {</span>
+<span class="nc" id="L654">					emailTo = physician.getEmail();</span>
+				}
+<span class="pc bpc" id="L656" title="1 of 2 branches missed.">				boolean useHardcodedEmail = !sendToActualEmail;</span>
+<span class="pc bpc" id="L657" title="4 of 6 branches missed.">				if(activeProfile!=null &amp;&amp; activeProfile.equalsIgnoreCase(&quot;qa&quot;) &amp;&amp; useHardcodedEmail)</span>
+<span class="nc" id="L658">					emailTo = &quot;babji.pedarla@prolifics.com&quot;;//TODO: needs to be changed later</span>
+<span class="pc bpc" id="L659" title="3 of 6 branches missed.">				else if(activeProfile!=null &amp;&amp; activeProfile.equalsIgnoreCase(&quot;dev&quot;) &amp;&amp; useHardcodedEmail)</span>
+<span class="fc" id="L660">					emailTo = &quot;babji.pedarla@prolifics.com&quot;;//TODO: needs to be changed later</span>
+<span class="fc" id="L661">				String message = ESCALATION_MSG;</span>
+<span class="fc" id="L662">				notifyUserByEmail(emailTo, message);</span>
+<span class="pc bpc" id="L663" title="1 of 2 branches missed.">			}else if(surveyResponse.getStatus().equals(COMPLETED)) {</span>
+<span class="fc" id="L664">				int patientId = survey.getPatientId();</span>
+<span class="fc" id="L665">				User patientInfo = userRepository.findById(patientId).orElse(null);</span>
+<span class="pc bpc" id="L666" title="3 of 6 branches missed.">				if(patientInfo!=null &amp;&amp; patientInfo.getDeviceToken()!=null &amp;&amp; survey.getReviewRemark()!=null) {</span>
+<span class="fc" id="L667">					Notification notificationEntity = new Notification(MSG_FROM_PHYSICIAN+survey.getReviewRemark(), SURVEY_COMPLETED_CTX,null);</span>
+<span class="fc" id="L668">					saveNotification(notificationEntity,patientId,surveyResponse.getUpdatedBy());</span>
+<span class="fc" id="L669">					sendNotificationToToken(SURVEY_COMPLETED_CTX, MSG_FROM_PHYSICIAN+survey.getReviewRemark() ,patientInfo.getDeviceToken());</span>
+				}
+			}
+<span class="fc" id="L672">		}</span>
+		else
+<span class="nc" id="L674">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Request&quot;);</span>
+
+<span class="fc" id="L676">		return 	survey.getId();</span>
+
+	}
+
+	private void notifyUserByEmail(String emailTo, String message) {
+<span class="fc" id="L681">		EmailDTO email = new EmailDTO();</span>
+<span class="fc" id="L682">		email.setEmailAddress(emailTo);</span>
+<span class="fc" id="L683">		email.setSubject(&quot;Survey Escalation&quot;);</span>
+<span class="fc" id="L684">		email.setTemplate(&quot;survey-escalation&quot;);</span>
+<span class="fc" id="L685">		Map&lt;String,Object&gt; templateInputs = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L686">		templateInputs.put(&quot;message&quot;, message);</span>
+<span class="fc" id="L687">		email.setTemplateInputs(templateInputs);</span>
+<span class="fc" id="L688">		sendEmailUsingTemplate(email);</span>
+<span class="fc" id="L689">	}</span>
+
+	private void sendEmailUsingTemplate(EmailDTO email) {
+<span class="fc" id="L692">		utilProxy.sendEmailUsingTemplate(email);</span>
+<span class="fc" id="L693">	}</span>
+
+
+	@Override
+	public List&lt;PatientReportDTO&gt; getPatientReport(Integer patientId, Date startDate, Date endDate) {
+<span class="fc" id="L698">		List&lt;PatientReportDTO&gt; patientReport = new ArrayList&lt;PatientReportDTO&gt;();</span>
+<span class="fc" id="L699">		SimpleDateFormat formatter = new SimpleDateFormat(&quot;yyyy-MM-dd&quot;); </span>
+<span class="fc" id="L700">		List&lt;PatientSurveyResponse&gt; surveyResponses = new ArrayList&lt;PatientSurveyResponse&gt;();</span>
+<span class="fc" id="L701">		surveyResponses = sResponseRepository.findByPatientIdAndStatusNotAndCreatedDateBetween(patientId, PENDING, startDate, endDate);</span>
+<span class="pc bpc" id="L702" title="2 of 4 branches missed.">		if(surveyResponses!=null &amp;&amp; surveyResponses.size() &gt; 0) {</span>
+<span class="fc" id="L703">			surveyResponses.stream().forEach((response)-&gt;{</span>
+<span class="fc" id="L704">				SurveyPatient surveyPatient = response.getSurveyPatient();</span>
+<span class="fc" id="L705">				String statusName = getSurveyStatusName(response.getScore());</span>
+<span class="fc" id="L706">				String statusCode = getSurveyStatusCode(response.getScore());</span>
+<span class="fc" id="L707">				PatientReportDTO report = new PatientReportDTO(formatter.format(response.getCreatedDate()), surveyPatient.getTitle(), statusName, statusCode);</span>
+<span class="fc" id="L708">				patientReport.add(report);</span>
+<span class="fc" id="L709">			});</span>
+		}
+<span class="fc" id="L711">		return patientReport;</span>
+	}
+
+	private String getSurveyStatusName(Integer score) {
+<span class="fc bfc" id="L715" title="All 4 branches covered.">		if(score &gt; 0 &amp;&amp; score &lt;= 5) {</span>
+<span class="fc" id="L716">			return &quot;Green&quot;;</span>
+<span class="fc bfc" id="L717" title="All 2 branches covered.">		}else if(score &gt; 5) {</span>
+<span class="fc" id="L718">			return &quot;Red&quot;;</span>
+		}else {
+<span class="fc" id="L720">			return &quot;Amber&quot;;</span>
+		}
+	}
+
+	private String getSurveyStatusCode(Integer score) {
+<span class="fc bfc" id="L725" title="All 4 branches covered.">		if(score &gt; 0 &amp;&amp; score &lt;= 5) {</span>
+<span class="fc" id="L726">			return &quot;#009933&quot;;</span>
+<span class="fc bfc" id="L727" title="All 2 branches covered.">		}else if(score &gt; 5) {</span>
+<span class="fc" id="L728">			return &quot;#FF0000&quot;;</span>
+		}else {
+<span class="fc" id="L730">			return &quot;#FFBF00&quot;;</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -3,22 +3,21 @@
 <%@ page language="java" contentType="text/html; charset=ISO-8859-1"
 	pageEncoding="ISO-8859-1"%>
 <%@page isELIgnored="false"%>
-<!DOCTYPE html>
+
 <html>
 <head>
 <meta charset="ISO-8859-1">
 <title>Painscript-Reports</title>
-<link rel="stylesheet"
-	href="<c:url value="/resources/css/reports.css"/>">
+<link rel="stylesheet" href="<c:url value="/resources/css/reports.css"/>">
 </head>
 <body>
 	<div class="wrapper">
 		<div class="topheader">
+		<img class="logo alt="Logo" src="<c:url value="/resources/images/pain-script-logo-blu-blk.png"/>">
 			<div class="info">
 				<h4>Welcome ${name}</h4>
 				<a href="/painscript-reports/"><img src="<c:url value="/resources/images/logout.jpg"/>" alt="logout"></a>
 			</div>
-
 		</div>
 		<div class="content">
 			<ul>
