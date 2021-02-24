@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DynamicNotificationHelper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">util-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.util.helper</a> &gt; <span class="el_source">DynamicNotificationHelper.java</span></div><h1>DynamicNotificationHelper.java</h1><pre class="source lang-java linenums">package com.painscript.util.helper;
+
+import java.sql.Time;
+import java.time.Duration;
+import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.Map;
+
+
+/**
+ * DynamicNotificationHelper is a Utility class that encapsulates
+ * the business logic of sending appropriate notification based 
+ * on the survey schedule.
+ * 
+ * @author Prolifics
+ *
+ */
+<span class="nc" id="L18">public class DynamicNotificationHelper {</span>
+
+	private static Map&lt;Integer, String&gt; genericNotifications;
+	
+	private static Map&lt;String, String&gt; finalNotifications;
+	
+	/**
+	 * The Different Message Formats
+	 */
+	static{
+<span class="fc" id="L28">		genericNotifications = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L29">		genericNotifications.put(1, &quot;Your daily survey is pending, please open and respond.&quot;);</span>
+		
+<span class="fc" id="L31">		genericNotifications.put(10, &quot;This is notification #%d that your daily survey is pending, please open and respond.&quot;);</span>
+<span class="fc" id="L32">		genericNotifications.put(20, &quot;Your daily survey is still pending, I need your response for your medical record.&quot;);</span>
+<span class="fc" id="L33">		genericNotifications.put(30, &quot;It has been %d minutes and you haven’t answered your daily survey, please respond.&quot;);</span>
+		
+<span class="fc" id="L35">		genericNotifications.put(40, &quot;This is notification #%d that your daily survey is pending, please open and respond.&quot;);</span>
+<span class="fc" id="L36">		genericNotifications.put(50, &quot;Your daily survey is still pending, I need your response for your medical record.&quot;);</span>
+<span class="fc" id="L37">		genericNotifications.put(60, &quot;It has been %d minutes and you haven’t answered your daily survey, please respond.&quot;);</span>
+		
+<span class="fc" id="L39">		finalNotifications = new HashMap&lt;&gt;();		</span>
+<span class="fc" id="L40">		finalNotifications.put(&quot;Second_Last&quot;, &quot;Time is nearly up for you to complete your daily survey, I need your response for your medical record.&quot;);</span>
+<span class="fc" id="L41">		finalNotifications.put(&quot;Last&quot;, &quot;It has been %d hours since I sent you your daily survey and you haven’t answered, for the last time today, please respond.&quot;);	</span>
+		
+<span class="fc" id="L43">	}</span>
+	
+	/**
+	 * fetchNotification picks the most appropriate Notification
+	 * that would go to a User based on the time set.
+	 * 
+	 * @param startTime
+	 * 	&lt;p&gt;The Start Time.&lt;/p&gt;
+	 * @param endTime
+	 * 	&lt;p&gt;The End Time.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The desired Notification Text.&lt;/p&gt;
+	 */
+	public static String fetchNotification(Time startTime, Time endTime){
+<span class="fc" id="L57">		LocalTime currentTime = LocalTime.now();</span>
+<span class="fc" id="L58">		Duration leftDuration = Duration.between(currentTime, endTime.toLocalTime());</span>
+<span class="fc" id="L59">		Duration passedDuration = Duration.between(startTime.toLocalTime(),currentTime);</span>
+		//1. Check using endTime if it is last hour.
+		//2. If YES - determine if its Last or Second last Message and return message accordingly.
+		//3. If NO - determine Normalized Key using startTime, endTime and currentTime and return message accordingly.
+<span class="fc" id="L63">		long minutes = leftDuration.toMinutes();</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">		if(minutes &lt; 0){</span>
+<span class="fc" id="L65">			return null; //Already Elapsed.</span>
+		}
+		//System.out.println(&quot;Left Duration - &quot;+minutes);
+<span class="fc bfc" id="L68" title="All 2 branches covered.">		if(minutes &lt;= 10){ //Is it the last message?</span>
+<span class="fc" id="L69">			String message = finalNotifications.get(&quot;Last&quot;);</span>
+<span class="fc" id="L70">			return String.format(message, passedDuration.toHours() + 1);</span>
+		}
+		
+<span class="fc bfc" id="L73" title="All 2 branches covered.">		if(minutes &lt;=20){ //Is it the second last message?</span>
+<span class="fc" id="L74">			return finalNotifications.get(&quot;Second_Last&quot;);</span>
+		}
+		
+		//Otherwise send customized message based on count and period of the Notification.		
+<span class="fc" id="L78">		Integer notificationFactor = getNormalizedKey(passedDuration);</span>
+		//System.out.println(&quot;notificationFactor - &quot; + notificationFactor);
+		
+<span class="fc" id="L81">		long minutesElapsed    = passedDuration.toMinutes();</span>
+<span class="fc" id="L82">		long notificationCount = (minutesElapsed/10) + 1;</span>
+		
+		//System.out.println(&quot;minutesElapsed - &quot; + minutesElapsed);
+		//System.out.println(&quot;notificationCount - &quot; + notificationCount);
+		
+<span class="fc" id="L87">		String msg = genericNotifications.get(notificationFactor);</span>
+		
+<span class="pc bpc" id="L89" title="1 of 4 branches missed.">		if(notificationFactor == 10 || notificationFactor == 40){</span>
+<span class="fc" id="L90">			msg = String.format(msg, notificationCount);</span>
+		}
+		
+<span class="pc bpc" id="L93" title="1 of 4 branches missed.">		if(notificationFactor == 30 || notificationFactor == 60){					</span>
+<span class="fc" id="L94">			msg = String.format(msg, minutesElapsed);</span>
+		}
+	
+<span class="fc" id="L97">		return msg;</span>
+	}
+	
+	
+	/**
+	 * getNormalizedKey determines the most appropriate Key
+	 * of the genericNotifications HashMap, that will hold
+	 * the message.
+	 * 
+	 * @param passedDuration
+	 * 	&lt;p&gt;The Duration Passed since Start Time.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The Normalized Key.&lt;/p&gt;
+	 */
+	public static Integer getNormalizedKey(Duration passedDuration){
+<span class="fc" id="L112">		long minutes = passedDuration.toMinutes();</span>
+<span class="fc" id="L113">		System.out.println(minutes);</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">		if(minutes &lt; 5){</span>
+<span class="fc" id="L115">			return 1;</span>
+		}
+<span class="fc" id="L117">		minutes = minutes % 60;</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">		if(minutes %10 !=0){</span>
+<span class="fc" id="L119">			minutes = ((minutes+5)/10)*10; </span>
+		}
+<span class="fc bfc" id="L121" title="All 2 branches covered.">		if(minutes == 0) {</span>
+<span class="fc" id="L122">			minutes = 60;</span>
+		}
+<span class="fc" id="L124">		return (int)minutes;</span>
+	}
+	
+	/**
+	 * Main Method for Testing only!
+	 * 
+	 */
+	/*public static void main(String[] args) {
+		Scanner in = new Scanner(System.in);
+        String choice =&quot;Y&quot;;
+        do {
+        	System.out.print(&quot;Enter Current Time = &quot;);
+            String currentTime = in.nextLine();
+            LocalTime cTime =LocalTime.parse(currentTime);
+            Time sTime = Time.valueOf(&quot;12:00:00&quot;);
+            Time eTime = Time.valueOf(&quot;15:00:00&quot;);
+            
+            System.out.println(fetchNotification(cTime,sTime, eTime));
+            
+            System.out.println(&quot;Do you want to test again?&quot;);
+            choice = in.nextLine(); 
+        }while(!choice.equalsIgnoreCase(&quot;N&quot;));
+        in.close();
+	}*/
+	
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

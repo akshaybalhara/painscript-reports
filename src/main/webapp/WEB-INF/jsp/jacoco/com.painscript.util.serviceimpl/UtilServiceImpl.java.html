@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UtilServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">util-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.util.serviceimpl</a> &gt; <span class="el_source">UtilServiceImpl.java</span></div><h1>UtilServiceImpl.java</h1><pre class="source lang-java linenums">package com.painscript.util.serviceimpl;
+
+import java.sql.Time;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.painscript.util.constants.UtilConstants;
+import com.painscript.util.dto.AppInfoDTO;
+import com.painscript.util.dto.DisorderDTO;
+import com.painscript.util.dto.LookupDTO;
+import com.painscript.util.dto.NotificationDTO;
+import com.painscript.util.dto.PushNotificationRequestDTO;
+import com.painscript.util.dto.SpecialityDTO;
+import com.painscript.util.exception.PainscriptBusinessException;
+import com.painscript.util.helper.DynamicNotificationHelper;
+import com.painscript.util.model.AppInfo;
+import com.painscript.util.model.Disorder;
+import com.painscript.util.model.Lookup;
+import com.painscript.util.model.Notification;
+import com.painscript.util.model.Speciality;
+import com.painscript.util.model.User;
+import com.painscript.util.repository.AppInfoRepository;
+import com.painscript.util.repository.DisorderRepository;
+import com.painscript.util.repository.NotificationRepository;
+import com.painscript.util.repository.SpecialityRepository;
+import com.painscript.util.repository.UserRepository;
+import com.painscript.util.repository.UtilRepository;
+import com.painscript.util.service.PushNotificationService;
+import com.painscript.util.service.UtilService;
+
+/**
+ * UtilServiceImpl : Implementation Class of UtilService.
+ *  
+ * @author Prolifics
+ *
+ */
+@Service
+<span class="fc" id="L56">public class UtilServiceImpl implements UtilService, UtilConstants {</span>
+	
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L61">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+	
+	private static final String SURVEY_NOTIFICATION_TITLE = &quot;Survey - Awaiting Response&quot;;
+	
+	private static final String SURVEY_NOTIFICATION_MSZ = &quot;Hey!! There is a survey pending to be completed.&quot;;
+	/**
+	 * utilRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private UtilRepository utilRepository;
+	
+	/**
+	 * NotificationRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private NotificationRepository notificationRepository;
+	
+	/**
+	 * AppInfoRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private AppInfoRepository appInfoRepository;
+	
+	/**
+	 * UserRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private UserRepository userRepository;
+	
+	/**
+	 * SpecialityRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private SpecialityRepository specialityRepository;
+	
+	/**
+	 * DisorderRepository will be injected by Spring Framework.
+	 */
+	@Autowired
+	private DisorderRepository disorderRepository;
+	
+	/**
+	 * PushNotificationService will be injected by Spring Framework.
+	 */
+	@Autowired
+	private PushNotificationService pushNotificationService;
+	
+
+	/**
+	 * getNotifications returns all the Notifications intended for a
+	 * specified User.
+	 * 
+	 * @param userId
+	 * 	&lt;p&gt;The id of the User for which Notifications needs to be queried.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The List of desired Notifications.&lt;/p&gt;
+	 */	
+	@Override
+	public List&lt;NotificationDTO&gt; getNotifications(int userId) {
+<span class="fc" id="L120">		List&lt;NotificationDTO&gt; notifications = utilRepository.getNotifications(userId);</span>
+<span class="fc" id="L121">		return notifications;</span>
+	}
+	
+	/**
+	 * getLookUp returns all Lookup Values for a particular
+	 * lookup type.
+	 * @param lookupType
+	 * 	&lt;p&gt;The lookupType to be queried for.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The desired List of Lookups.&lt;/p&gt;
+	 */	
+	@Override
+	@Cacheable( value = &quot;lookup&quot;, key = &quot;#lookupType&quot;)
+	public List&lt;LookupDTO&gt; getLookUp(String lookupType){
+<span class="fc" id="L135">		List&lt;LookupDTO&gt; list = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L136">		List&lt;Lookup&gt; lookupList = utilRepository.getLookUp(lookupType);</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">		for( Lookup lookup : lookupList ) {</span>
+<span class="fc" id="L138">			LookupDTO lkp = new LookupDTO();</span>
+<span class="fc" id="L139">			BeanUtils.copyProperties(lookup, lkp);</span>
+<span class="fc" id="L140">			lkp.setCode(lookup.getLookupCode());</span>
+<span class="fc" id="L141">			lkp.setValue(lookup.getLookupName());</span>
+<span class="fc" id="L142">			list.add(lkp);</span>
+<span class="fc" id="L143">		}</span>
+<span class="fc" id="L144">		logger.debug(&quot;Size: &quot;+list.size());</span>
+<span class="fc" id="L145">		return list;</span>
+	}
+
+	/**
+	 * sendPendingNotification is used to send pending notifications
+	 * to their respective user
+	 */
+	@Override
+	@Async
+	public void sendPendingNotifications() {
+<span class="fc" id="L155">		List&lt;Notification&gt; pendingNotifications = notificationRepository.findByStatus(INACTIVE);</span>
+<span class="pc bpc" id="L156" title="2 of 4 branches missed.">		if(pendingNotifications!=null &amp;&amp; pendingNotifications.size() &gt; 0) {</span>
+<span class="fc" id="L157">			boolean notificationsSent = false;</span>
+<span class="fc" id="L158">			ObjectMapper mapper = new ObjectMapper();</span>
+<span class="fc bfc" id="L159" title="All 2 branches covered.">			for(Notification notification : pendingNotifications) {</span>
+<span class="fc" id="L160">				User user = userRepository.findById(notification.getUserId()).orElse(null);</span>
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">				if(user!=null) {</span>
+<span class="fc bfc" id="L162" title="All 2 branches covered.">					if(user.getDeviceToken()!=null) {</span>
+<span class="fc" id="L163">						PushNotificationRequestDTO notificationRequest = new PushNotificationRequestDTO(notification.getNotificationType(),notification.getNotification(),null);</span>
+<span class="fc" id="L164">						notificationRequest.setToken(user.getDeviceToken());</span>
+						try {
+<span class="fc" id="L166">							JsonNode jsonData = mapper.readValue(notification.getAdditionalData(), JsonNode.class);</span>
+<span class="fc" id="L167">							String identifier = jsonData.get(&quot;identifier&quot;).toString();</span>
+<span class="fc" id="L168">							Map&lt;String,String&gt; data = getAdditionalNotificationData(notification.getNotificationType(), identifier);</span>
+<span class="fc" id="L169">							pushNotificationService.sendPushNotificationToTokenWithData(notificationRequest,data);</span>
+<span class="fc" id="L170">							notificationsSent = true;</span>
+<span class="fc" id="L171">							notification.setStatus(ACTIVE);</span>
+<span class="fc" id="L172">							notification.setUpdatedDate(new Date());</span>
+<span class="fc" id="L173">							notification.setUpdatedBy(&quot;system&quot;);</span>
+<span class="fc" id="L174">						} catch (JsonProcessingException e) {</span>
+<span class="fc" id="L175">							logger.error(e.getMessage());</span>
+<span class="fc" id="L176">							throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L177">						}</span>
+<span class="fc" id="L178">					}else {</span>
+<span class="fc" id="L179">						notification.setStatus(NOT_SENT);</span>
+<span class="fc" id="L180">						notification.setUpdatedDate(new Date());</span>
+<span class="fc" id="L181">						notification.setUpdatedBy(&quot;system&quot;);</span>
+					}
+					
+				}
+<span class="fc" id="L185">			}</span>
+<span class="fc bfc" id="L186" title="All 2 branches covered.">			if(notificationsSent) {</span>
+<span class="fc" id="L187">				notificationRepository.saveAll(pendingNotifications);</span>
+			}
+			
+		}
+		
+<span class="fc" id="L192">	}</span>
+
+	/**
+	 * listAllVersions is used to get list of all versions of app
+	 * based on status.
+	 * 
+	 * @param appType
+	 * &lt;p&gt;App type&lt;/p&gt;
+	 * @param status
+	 * &lt;p&gt;status&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt;List of all versions&lt;/p&gt;
+	 */
+	@Override
+	public List&lt;AppInfoDTO&gt; getAllVersions(String appType, String status) {
+<span class="fc" id="L207">		List&lt;AppInfoDTO&gt; versionsList = new ArrayList&lt;AppInfoDTO&gt;();</span>
+<span class="fc" id="L208">		List&lt;AppInfo&gt; versions = new ArrayList&lt;AppInfo&gt;();</span>
+<span class="fc bfc" id="L209" title="All 4 branches covered.">		if(status == null &amp;&amp; !appType.equalsIgnoreCase(ALL)) {</span>
+<span class="fc" id="L210">			versions = appInfoRepository.findByAppType(appType);</span>
+<span class="pc bpc" id="L211" title="1 of 4 branches missed.">		}else if(status == null &amp;&amp; appType.equalsIgnoreCase(ALL)) {</span>
+<span class="fc" id="L212">			versions = (List&lt;AppInfo&gt;) appInfoRepository.findAll();</span>
+		}else {
+<span class="fc" id="L214">			versions = appInfoRepository.findByAppTypeAndStatus(appType, status);</span>
+		}
+<span class="fc" id="L216">		ObjectMapper mapper = new ObjectMapper();</span>
+<span class="pc bpc" id="L217" title="2 of 4 branches missed.">		if(versions!= null &amp;&amp; versions.size() &gt; 0) {</span>
+<span class="fc" id="L218">			versions.forEach((version)-&gt;{</span>
+<span class="fc" id="L219">				AppInfoDTO versionDTO = new AppInfoDTO();</span>
+<span class="fc" id="L220">				BeanUtils.copyProperties(version, versionDTO);</span>
+<span class="fc" id="L221">				String jsonString = version.getReleaseNotes();</span>
+<span class="pc bpc" id="L222" title="2 of 4 branches missed.">				if(jsonString!=null &amp;&amp; !jsonString.isEmpty()) {</span>
+					try {
+<span class="fc" id="L224">						JsonNode releaseNotes = mapper.readTree(jsonString);</span>
+<span class="fc" id="L225">						versionDTO.setReleaseNotes(releaseNotes);</span>
+<span class="nc" id="L226">					} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L227">						logger.error(e.getMessage());</span>
+<span class="nc" id="L228">						throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L229">					}</span>
+				}
+<span class="fc" id="L231">				versionsList.add(versionDTO);</span>
+<span class="fc" id="L232">			});</span>
+		}
+<span class="fc" id="L234">		return versionsList;</span>
+	}
+
+	/**
+	 * saveNewVersion saves a new version of application in appInfo
+	 * 
+	 * @param appInfoRequest
+	 * &lt;p&gt;App info request&lt;/p&gt;
+	 */
+	@Override
+	public void saveNewVersion(AppInfoDTO appInfoRequest) {
+<span class="fc" id="L245">		AppInfo versionEntity = new AppInfo();</span>
+<span class="fc bfc" id="L246" title="All 2 branches covered.">		if(appInfoRequest.getId()!=null) {</span>
+<span class="fc" id="L247">			versionEntity = appInfoRepository.findById(appInfoRequest.getId()).orElse(null);</span>
+<span class="pc bpc" id="L248" title="1 of 2 branches missed.">			if(versionEntity == null) {</span>
+<span class="nc" id="L249">				logger.error(&quot;Invalid id recieved: &quot;+appInfoRequest.getId());</span>
+<span class="nc" id="L250">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid id recieved.&quot;);</span>
+			}
+<span class="pc bpc" id="L252" title="1 of 2 branches missed.">			versionEntity.setAppType(appInfoRequest.getAppType()!=null ? appInfoRequest.getAppType() : versionEntity.getAppType());			</span>
+<span class="pc bpc" id="L253" title="1 of 2 branches missed.">			versionEntity.setStatus(appInfoRequest.getStatus()!=null ? appInfoRequest.getStatus() : versionEntity.getStatus());</span>
+<span class="pc bpc" id="L254" title="1 of 2 branches missed.">			versionEntity.setUpdatedBy(appInfoRequest.getUpdatedBy()!=null ? appInfoRequest.getUpdatedBy() : versionEntity.getUpdatedBy());</span>
+<span class="fc" id="L255">			versionEntity.setUpdatedDate(new Date());</span>
+<span class="pc bpc" id="L256" title="1 of 2 branches missed.">			versionEntity.setVersion(appInfoRequest.getVersion()!=null ? appInfoRequest.getVersion() : versionEntity.getVersion());</span>
+		}else {
+<span class="fc" id="L258">			List&lt;AppInfo&gt; existingVersions = appInfoRepository.findByAppTypeAndVersion(appInfoRequest.getAppType(),appInfoRequest.getVersion());</span>
+<span class="pc bpc" id="L259" title="3 of 4 branches missed.">			if(existingVersions != null &amp;&amp; existingVersions.size() &gt; 0) {</span>
+<span class="nc" id="L260">				logger.error(&quot;This version already exist: &quot;+appInfoRequest.getId());</span>
+<span class="nc" id="L261">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;This version already exist.&quot;);</span>
+			}
+<span class="fc" id="L263">			BeanUtils.copyProperties(appInfoRequest, versionEntity);</span>
+<span class="fc" id="L264">			versionEntity.setStatus(ACTIVE);</span>
+		}
+		
+<span class="fc" id="L267">		ObjectMapper mapper = new ObjectMapper();</span>
+<span class="fc bfc" id="L268" title="All 2 branches covered.">		if(appInfoRequest.getReleaseNotes()!=null) {</span>
+			try {
+<span class="fc" id="L270">				String jsonString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(appInfoRequest.getReleaseNotes());</span>
+<span class="fc" id="L271">				versionEntity.setReleaseNotes(jsonString);</span>
+<span class="nc" id="L272">			} catch (JsonProcessingException e) {</span>
+<span class="nc" id="L273">				logger.error(e.getMessage());</span>
+<span class="nc" id="L274">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L275">			}</span>
+		}else {
+<span class="fc" id="L277">			versionEntity.setReleaseNotes(null);</span>
+		}
+<span class="fc" id="L279">		appInfoRepository.save(versionEntity);</span>
+<span class="fc" id="L280">	}</span>
+	
+	/**
+	 * Private method to send additional data for push notifications
+	 * 
+	 * @return
+	 */
+	private Map&lt;String, String&gt; getAdditionalNotificationData(String context, String identifier) {
+<span class="fc" id="L288">		Map&lt;String,String&gt; data = new HashMap&lt;String, String&gt;();</span>
+<span class="fc" id="L289">		data.put(&quot;context&quot;, context);</span>
+<span class="fc" id="L290">		data.put(&quot;indentifier&quot;, identifier);</span>
+<span class="fc" id="L291">		data.put(&quot;click_action&quot;, &quot;FCM_PLUGIN_ACTIVITY&quot;);</span>
+<span class="fc" id="L292">		return data;</span>
+	}
+
+	/**
+	 * sendSurveyReminders executes a stored procedure in DB
+	 * to send pending notifications to those patients who didn't submitted
+	 * their assigned surveys yet.
+	 */
+	@Override
+	@Async
+	public void sendSurveyReminders() {
+<span class="fc" id="L303">		Object tokens = utilRepository.sendSurveyReminders();</span>
+<span class="pc bpc" id="L304" title="1 of 2 branches missed.">		if(tokens!=null) {</span>
+<span class="fc" id="L305">			JSONArray jsonArray = new JSONArray(tokens.toString());</span>
+<span class="fc" id="L306">			jsonArray.forEach((jsonObj)-&gt;{</span>
+<span class="fc" id="L307">				JSONObject obj = new JSONObject(jsonObj.toString());</span>
+<span class="fc" id="L308">				String sTime = (String) obj.get(&quot;starttime&quot;);</span>
+<span class="fc" id="L309">				String eTime = (String) obj.get(&quot;endtime&quot;);</span>
+<span class="pc bpc" id="L310" title="2 of 4 branches missed.">				if(sTime!=null &amp;&amp; eTime!=null) {</span>
+<span class="fc" id="L311">					Time startTime = Time.valueOf(sTime.substring(0,8));</span>
+<span class="fc" id="L312">					Time endTime = Time.valueOf(eTime.substring(0,8));</span>
+<span class="fc" id="L313">					String notificationMessage = DynamicNotificationHelper.fetchNotification(startTime, endTime);</span>
+<span class="fc" id="L314">					PushNotificationRequestDTO notificationRequest = new PushNotificationRequestDTO(SURVEY_NOTIFICATION_TITLE,notificationMessage,null);</span>
+<span class="fc" id="L315">					notificationRequest.setToken(obj.get(&quot;token&quot;).toString());</span>
+<span class="fc" id="L316">					logger.debug(&quot;SurveyNotification: \nStart Time: &quot;+startTime.toString()+&quot;\nEnd Time: &quot;+endTime.toString()</span>
+<span class="fc" id="L317">					+&quot;\nUser :&quot;+obj.get(&quot;username&quot;).toString()</span>
+<span class="fc" id="L318">					+&quot;\nToken: &quot;+notificationRequest.getToken()</span>
+					+&quot;\nMessage: &quot;+notificationMessage);
+<span class="fc" id="L320">					pushNotificationService.sendPushNotificationToToken(notificationRequest);</span>
+				}
+<span class="fc" id="L322">			});</span>
+		}
+<span class="fc" id="L324">	}</span>
+
+	/**
+	 * clearCache clears the cache
+	 */
+	@Override
+	@Caching(evict = { @CacheEvict(value=&quot;specialities&quot;, allEntries = true), @CacheEvict(value=&quot;disorders&quot;, allEntries = true) , @CacheEvict(value=&quot;lookup&quot;, allEntries = true) })
+	public void clearCache() {
+		
+<span class="nc" id="L333">	}</span>
+
+	/**
+	 * getSpecialties retrieves list of all specialties based on status.
+	 * 
+	 * @param status
+	 * &lt;p&gt;Status of specialty.&lt;/p&gt;
+	 * @return 
+	 * &lt;p&gt;List of specialties.&lt;/p&gt;
+	 */
+	@Override
+	@Cacheable( value = &quot;specialities&quot;, key = &quot;#status&quot;)
+	public List&lt;SpecialityDTO&gt; getSpecialties(String status) {
+<span class="fc" id="L346">		List&lt;SpecialityDTO&gt; specialtiesList = new ArrayList&lt;SpecialityDTO&gt;();</span>
+<span class="fc" id="L347">		List&lt;Speciality&gt; specialties = specialityRepository.findByStatus(status);</span>
+<span class="pc bpc" id="L348" title="2 of 4 branches missed.">		if(specialties!=null &amp;&amp; specialties.size() &gt; 0) {</span>
+<span class="fc" id="L349">			specialties.forEach((speciality)-&gt;{</span>
+<span class="fc" id="L350">				SpecialityDTO specialityDTO = new SpecialityDTO();</span>
+<span class="fc" id="L351">				BeanUtils.copyProperties(speciality, specialityDTO);</span>
+<span class="fc" id="L352">				specialityDTO.setId(speciality.getId());</span>
+<span class="fc" id="L353">				specialityDTO.setName(speciality.getSpecialityName());</span>
+<span class="fc" id="L354">				specialityDTO.setValue(speciality.getSpecialityCode());</span>
+<span class="fc" id="L355">				specialityDTO.setCreatedBy(null);</span>
+<span class="fc" id="L356">				specialityDTO.setUpdatedBy(null);</span>
+<span class="fc" id="L357">				specialityDTO.setStatus(null);</span>
+<span class="fc" id="L358">				specialtiesList.add(specialityDTO);</span>
+<span class="fc" id="L359">			});</span>
+		}
+<span class="fc" id="L361">		return 	specialtiesList;</span>
+	}
+	
+	/**
+	 * getDisorders retrieves list of all disorders based on status.
+	 * 
+	 * @param status
+	 * &lt;p&gt; Status of disorder.&lt;/p&gt;
+	 * @return
+	 * &lt;p&gt; List of disorders.&lt;/p&gt;
+	 */
+	@Override
+	@Cacheable( value = &quot;disorders&quot;, key = &quot;#status&quot;)
+	public List&lt;DisorderDTO&gt; getDisorders(String status) {
+<span class="fc" id="L375">		List&lt;DisorderDTO&gt; disordersList = new ArrayList&lt;DisorderDTO&gt;();</span>
+<span class="fc" id="L376">		List&lt;Disorder&gt; disorders = new ArrayList&lt;Disorder&gt;();</span>
+<span class="fc bfc" id="L377" title="All 2 branches covered.">		if(status.equalsIgnoreCase(ALL)) {</span>
+<span class="fc" id="L378">			disorders = (List&lt;Disorder&gt;) disorderRepository.findAll();</span>
+		}else {
+<span class="fc" id="L380">			disorders = disorderRepository.findByStatus(status);</span>
+		}
+<span class="pc bpc" id="L382" title="2 of 4 branches missed.">		if(disorders!=null &amp;&amp; disorders.size() &gt; 0) {</span>
+<span class="fc" id="L383">			disorders.forEach((disorder)-&gt;{</span>
+<span class="fc" id="L384">				DisorderDTO disorderDTO = new DisorderDTO();</span>
+<span class="fc" id="L385">				BeanUtils.copyProperties(disorder, disorderDTO);</span>
+<span class="fc" id="L386">				disorderDTO.setDisorderId(disorder.getId());</span>
+<span class="fc" id="L387">				disorderDTO.setCreatedBy(null);</span>
+<span class="fc" id="L388">				disorderDTO.setStatus(disorder.getStatus());</span>
+<span class="fc" id="L389">				disorderDTO.setUpdatedBy(null);</span>
+<span class="fc" id="L390">				disordersList.add(disorderDTO);</span>
+<span class="fc" id="L391">			});</span>
+		}
+<span class="fc" id="L393">		return 	disordersList;</span>
+	}
+
+	/**
+	 * addSpecialty will add new specialty
+	 * @param specialityDTO
+	 */
+	@Override
+	public void addSpecialty(SpecialityDTO specialityDTO) {
+<span class="pc bpc" id="L402" title="1 of 2 branches missed.">		if(!specialityRepository.existsBySpecialityCode(specialityDTO.getValue())) {</span>
+<span class="fc" id="L403">			Speciality speciality = new Speciality();</span>
+<span class="fc" id="L404">			speciality.setSpecialityName(specialityDTO.getName());</span>
+<span class="fc" id="L405">			speciality.setSpecialityCode(specialityDTO.getValue());</span>
+<span class="fc" id="L406">			speciality.setStatus(ACTIVE);</span>
+<span class="fc" id="L407">			speciality.setCreatedBy(specialityDTO.getCreatedBy());</span>
+<span class="fc" id="L408">			speciality.setCreatedDate(new Date());</span>
+<span class="fc" id="L409">			specialityRepository.save(speciality);</span>
+<span class="fc" id="L410">		}else {</span>
+<span class="nc" id="L411">			logger.error(&quot;Speciality already exist: &quot;+specialityDTO.getValue());</span>
+<span class="nc" id="L412">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Speciality already exist.&quot;);</span>
+		}
+<span class="fc" id="L414">	}</span>
+	
+	/**
+	 * addDisorder will add new disorder
+	 * @param disorderDTO
+	 */
+	@Override
+	public void addDisorder(DisorderDTO disorderDTO) {
+<span class="pc bpc" id="L422" title="1 of 2 branches missed.">		if(!disorderRepository.existsByDisorderName(disorderDTO.getDisorderName())) {</span>
+<span class="fc" id="L423">			Disorder disorder = new Disorder();</span>
+<span class="fc" id="L424">			disorder.setDisorderName(disorderDTO.getDisorderName());</span>
+<span class="fc" id="L425">			disorder.setDescription(disorderDTO.getDescription());</span>
+<span class="fc" id="L426">			disorder.setStatus(ACTIVE);</span>
+<span class="fc" id="L427">			disorder.setCreatedBy(disorderDTO.getCreatedBy());</span>
+<span class="fc" id="L428">			disorder.setCreatedDate(new Date());</span>
+<span class="fc" id="L429">			disorderRepository.save(disorder);</span>
+<span class="fc" id="L430">		}else {</span>
+<span class="nc" id="L431">			logger.error(&quot;Disorder already exist: &quot;+disorderDTO.getDisorderName());</span>
+<span class="nc" id="L432">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Disorder already exist.&quot;);</span>
+		}
+<span class="fc" id="L434">	}</span>
+
+	/**
+	 * updateSpeciality will update the details of specialty
+	 * @param specialityDTO
+	 */
+	@Override
+	public void updateSpeciality(SpecialityDTO specialityDTO) {
+<span class="fc" id="L442">		Speciality speciality = specialityRepository.findById(specialityDTO.getId()).orElse(null);</span>
+<span class="pc bpc" id="L443" title="1 of 2 branches missed.">		if(speciality!=null) {</span>
+<span class="pc bpc" id="L444" title="1 of 2 branches missed.">			speciality.setSpecialityName(specialityDTO.getName()!=null?specialityDTO.getName():speciality.getSpecialityName());</span>
+<span class="pc bpc" id="L445" title="2 of 4 branches missed.">			if(specialityDTO.getValue()!=null &amp;&amp; !specialityRepository.existsBySpecialityCode(specialityDTO.getValue())) {</span>
+<span class="fc" id="L446">				speciality.setSpecialityCode(specialityDTO.getValue());</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">			}else if(specialityDTO.getValue()!=null) {</span>
+<span class="nc" id="L448">				logger.error(&quot;Speciality already exist: &quot;+specialityDTO.getValue());</span>
+<span class="nc" id="L449">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Speciality already exist.&quot;);</span>
+			}
+<span class="pc bpc" id="L451" title="1 of 2 branches missed.">			speciality.setStatus(specialityDTO.getStatus()!=null?specialityDTO.getStatus():speciality.getStatus());</span>
+<span class="fc" id="L452">			speciality.setUpdatedBy(specialityDTO.getUpdatedBy());</span>
+<span class="fc" id="L453">			speciality.setUpdatedDate(new Date());</span>
+<span class="fc" id="L454">			specialityRepository.save(speciality);</span>
+		}else {
+<span class="nc" id="L456">			logger.error(&quot;Invalid Speciality Id: &quot;+specialityDTO.getId());</span>
+<span class="nc" id="L457">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Speciality Id.&quot;);</span>
+		}
+		
+<span class="fc" id="L460">	}</span>
+
+	/**
+	 * updateDisorder will update the details of disorder
+	 * @param specialityDTO
+	 */
+	@Override
+	public void updateDisorder(DisorderDTO disorderDTO) {
+<span class="fc" id="L468">		Disorder disorder = disorderRepository.findById(disorderDTO.getDisorderId()).orElse(null);</span>
+<span class="pc bpc" id="L469" title="1 of 2 branches missed.">		if(disorder!=null) {</span>
+<span class="pc bpc" id="L470" title="1 of 2 branches missed.">			disorder.setDisorderName(disorderDTO.getDisorderName()!=null?disorderDTO.getDisorderName():disorder.getDisorderName());</span>
+<span class="pc bpc" id="L471" title="2 of 4 branches missed.">			if(disorderDTO.getDisorderName()!=null &amp;&amp; !disorderRepository.existsByDisorderName(disorderDTO.getDisorderName())) {</span>
+<span class="fc" id="L472">				disorder.setDisorderName(disorderDTO.getDisorderName());</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">			}else if(disorderDTO.getDisorderName()!=null) {</span>
+<span class="nc" id="L474">				logger.error(&quot;Disorder already exist: &quot;+disorderDTO.getDisorderName());</span>
+<span class="nc" id="L475">				throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Disorder already exist.&quot;);</span>
+			}
+<span class="pc bpc" id="L477" title="1 of 2 branches missed.">			disorder.setStatus(disorderDTO.getStatus()!=null?disorderDTO.getStatus():disorder.getStatus());</span>
+<span class="fc" id="L478">			disorder.setUpdatedBy(disorderDTO.getUpdatedBy());</span>
+<span class="fc" id="L479">			disorder.setUpdatedDate(new Date());</span>
+<span class="fc" id="L480">			disorderRepository.save(disorder);</span>
+		}else {
+<span class="nc" id="L482">			logger.debug(&quot;Invalid Disorder Id: &quot;+disorderDTO.getDisorderId());</span>
+<span class="nc" id="L483">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, &quot;Invalid Disorder Id.&quot;);</span>
+		}
+		
+<span class="fc" id="L486">	}</span>
+
+	/**
+	 * getSpecialtiesByRole will retrieves the specialty details based on role 
+	 * @param roleId
+	 * @param active
+	 * @return Specialty
+	 */
+	@Override
+	public List&lt;SpecialityDTO&gt; getSpecialtiesByRole(Integer roleId, String status) {
+<span class="fc" id="L496">		List&lt;SpecialityDTO&gt; specialtiesList = new ArrayList&lt;SpecialityDTO&gt;();</span>
+<span class="fc" id="L497">		List&lt;Speciality&gt; specialties = specialityRepository.findByRoleIdAndStatus(roleId,status);</span>
+<span class="pc bpc" id="L498" title="2 of 4 branches missed.">		if(specialties!=null &amp;&amp; specialties.size() &gt; 0) {</span>
+<span class="fc" id="L499">			specialties.forEach((speciality)-&gt;{</span>
+<span class="fc" id="L500">				SpecialityDTO specialityDTO = new SpecialityDTO();</span>
+<span class="fc" id="L501">				BeanUtils.copyProperties(speciality, specialityDTO);</span>
+<span class="fc" id="L502">				specialityDTO.setId(speciality.getId());</span>
+<span class="fc" id="L503">				specialityDTO.setName(speciality.getSpecialityName());</span>
+<span class="fc" id="L504">				specialityDTO.setValue(speciality.getSpecialityCode());</span>
+<span class="fc" id="L505">				specialityDTO.setCreatedBy(null);</span>
+<span class="fc" id="L506">				specialityDTO.setUpdatedBy(null);</span>
+<span class="fc" id="L507">				specialityDTO.setStatus(null);</span>
+<span class="fc" id="L508">				specialtiesList.add(specialityDTO);</span>
+<span class="fc" id="L509">			});</span>
+		}
+<span class="fc" id="L511">		return 	specialtiesList;</span>
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

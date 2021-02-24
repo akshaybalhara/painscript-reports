@@ -1,0 +1,7 @@
+@charset "ISO-8859-1";
+
+.login_form{
+	width: 40%;
+	height: 50%;
+	border: 2px solid green;
+}

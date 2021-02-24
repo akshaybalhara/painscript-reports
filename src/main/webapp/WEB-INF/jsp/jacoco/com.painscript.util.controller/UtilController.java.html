@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UtilController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">util-service</a> &gt; <a href="index.source.html" class="el_package">com.painscript.util.controller</a> &gt; <span class="el_source">UtilController.java</span></div><h1>UtilController.java</h1><pre class="source lang-java linenums">package com.painscript.util.controller;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.mail.MessagingException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.painscript.util.constants.UtilConstants;
+import com.painscript.util.dto.AppInfoDTO;
+import com.painscript.util.dto.DisorderDTO;
+import com.painscript.util.dto.EmailDTO;
+import com.painscript.util.dto.LookupDTO;
+import com.painscript.util.dto.NotificationDTO;
+import com.painscript.util.dto.PushNotificationRequestDTO;
+import com.painscript.util.dto.SpecialityDTO;
+import com.painscript.util.dto.StatusDTO;
+import com.painscript.util.exception.PainscriptBusinessException;
+import com.painscript.util.service.MailService;
+import com.painscript.util.service.PushNotificationService;
+import com.painscript.util.service.UtilService;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+/**
+ * UtilController is the core controller of Util Micro Service
+ * which do have business API's to perform routine operations.
+ * 
+ * @author Prolifics.
+ *
+ */
+@CrossOrigin(origins = &quot;*&quot;)
+@RestController
+@RequestMapping( value=&quot;/util&quot; )
+@Tag(name = &quot;UtilService&quot;, description = &quot;Utils Service API&quot;)
+<span class="fc" id="L51">public class UtilController implements UtilConstants{</span>
+	
+	/**
+	 * The Logger instance.
+	 */
+<span class="fc" id="L56">	private final Logger logger = LoggerFactory.getLogger(this.getClass());</span>
+	
+	/**
+	 * Service Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private UtilService utilService; 
+	
+	/**
+	 * MailService Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private MailService mailService;
+	
+	/**
+	 * PushNotificationService Bean will be injected by the Spring framework.
+	 */
+	@Autowired
+	private PushNotificationService pushNotificationService;
+	
+	@Value(&quot;${android.app.url}&quot;)
+	private String androidAppUrl;
+	
+	@Value(&quot;${ios.app.url}&quot;)
+	private String iosAppUrl;
+	
+	/**
+	 * sendEmail is intended to send the Email based on the meta
+	 * data specified in the Request Body.
+	 * 
+	 * @param email
+	 * 	&lt;p&gt;The DTO encapsulating Email meta data.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The Status of Email Sending.&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Sends the email&quot;, description = &quot;Sends the email&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/send-email&quot;,  method=RequestMethod.POST )
+	public ResponseEntity&lt;String&gt; sendEmail( @RequestBody EmailDTO email ) {
+<span class="fc" id="L94">		logger.debug(&quot;Email details = &quot;+email);</span>
+		try {
+<span class="fc" id="L96">			mailService.sendEmail(email);</span>
+<span class="nc" id="L97">		} catch (MessagingException e) {</span>
+<span class="nc" id="L98">			logger.error(e.getMessage());</span>
+<span class="nc" id="L99">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L100">		}</span>
+<span class="fc" id="L101">		return new ResponseEntity&lt;&gt;(&quot;Email Sent&quot;, HttpStatus.OK);</span>
+	}
+	
+	/**
+	 * sendNotification is used to send notifications
+	 * to the user
+	 * 
+	 * @param notification
+	 * @return
+	 */
+	@Operation(summary = &quot;Sends the notification to the user&quot;, description = &quot;Sends the notification to the user&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/send-notification&quot;,  method=RequestMethod.POST )
+	public ResponseEntity&lt;String&gt; sendNotification( @RequestBody PushNotificationRequestDTO notificationRequest ) {
+<span class="pc bpc" id="L114" title="1 of 4 branches missed.">		if(notificationRequest.getToken()!=null &amp;&amp; !notificationRequest.getToken().isEmpty()) {</span>
+<span class="fc" id="L115">			pushNotificationService.sendPushNotificationToToken(notificationRequest);</span>
+<span class="fc" id="L116">			logger.debug(&quot;Notification sent to token: &quot;+notificationRequest.getToken());</span>
+		}else {
+<span class="fc" id="L118">			pushNotificationService.sendPushNotificationToTopic(notificationRequest);</span>
+<span class="fc" id="L119">			logger.debug(&quot;Notification sent to topic: &quot;+notificationRequest.getTopic());</span>
+		}
+<span class="fc" id="L121">		return new ResponseEntity&lt;&gt;(&quot;Notification Sent&quot;, HttpStatus.OK);</span>
+	}
+	
+	/**
+	 * sendPendingNotification is used to send pending notifications
+	 * to their respective user
+	 * 
+	 * @return
+	 */
+	@Operation(summary = &quot;Sends pending notification to the users&quot;, description = &quot;Sends pending notification to the users.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/send-pending-notifications&quot;,  method=RequestMethod.GET )
+	public ResponseEntity&lt;String&gt; sendPendingNotifications() {
+<span class="fc" id="L133">		utilService.sendPendingNotifications();</span>
+<span class="fc" id="L134">		return new ResponseEntity&lt;&gt;(&quot;Notifications Sent&quot;, HttpStatus.OK);</span>
+	}	
+	
+	/**
+	 * sendSurveyReminders is used to send reminder for pending survey
+	 * to their respective user by sending push notifications
+	 * 
+	 * @return
+	 */
+	@Operation(summary = &quot;Sends reminder for pending surveys&quot;, description = &quot;Sends reminder for pending surveys.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/send-survey-reminders&quot;,  method=RequestMethod.GET )
+	public ResponseEntity&lt;String&gt; sendSurveyReminders() {
+<span class="fc" id="L146">		utilService.sendSurveyReminders();</span>
+<span class="fc" id="L147">		return new ResponseEntity&lt;&gt;(&quot;Survey reminder Sent&quot;, HttpStatus.OK);</span>
+	}
+	
+	/**
+	 * subscribeToTopic is used to subscribe a topic in fcm.
+	 * 
+	 * @param registrationTokens
+	 * @param topic
+	 * @return
+	 */
+	@Operation(summary = &quot;Subscribe a topic&quot;, description = &quot;Subscribe a topic.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/subscribe-to-topic&quot;,  method=RequestMethod.POST )
+	public ResponseEntity&lt;String&gt; subscribeToTopic(@RequestParam List&lt;String&gt; registrationTokens, @RequestParam String topic) {
+<span class="pc bpc" id="L160" title="2 of 4 branches missed.">		if(!topic.isEmpty() &amp;&amp; registrationTokens.size() &gt; 0) {</span>
+<span class="fc" id="L161">			pushNotificationService.subscribeToTopic(registrationTokens, topic);</span>
+<span class="fc" id="L162">			logger.debug(&quot;Subscribed to topic: &quot;+topic);</span>
+		}
+<span class="fc" id="L164">		return new ResponseEntity&lt;&gt;(&quot;Subscribed successfully.&quot;, HttpStatus.OK);</span>
+	}
+	
+	/**
+	 * unsubscribeFromTopic is used to unsubscribe a topic in fcm.
+	 * 
+	 * @param registrationTokens
+	 * @param topic
+	 * @return
+	 */
+	@Operation(summary = &quot;Unsubscribe a topic&quot;, description = &quot;Unsubscribe a topic.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/unsubscribe-from-topic&quot;,  method=RequestMethod.POST )
+	public ResponseEntity&lt;String&gt; unsubscribeFromTopic(@RequestParam List&lt;String&gt; registrationTokens, @RequestParam String topic) {
+<span class="pc bpc" id="L177" title="2 of 4 branches missed.">		if(!topic.isEmpty() &amp;&amp; registrationTokens.size() &gt; 0) {</span>
+<span class="fc" id="L178">			pushNotificationService.unsubscribeFromTopic(registrationTokens, topic);</span>
+<span class="fc" id="L179">			logger.debug(&quot;Unsubscribed from topic: &quot;+topic);</span>
+		}
+<span class="fc" id="L181">		return new ResponseEntity&lt;&gt;(&quot;Unsubscribed successfully.&quot;, HttpStatus.OK);</span>
+	}
+	
+	/**
+	 * getLookUp fetches the lookup value from db
+	 * against a lookup code
+	 * 
+	 * @param notification
+	 * @return
+	 */
+	@Operation(summary = &quot;Get lookup&quot;, description = &quot;Gets the lookup&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/lookup/{lookupType}&quot;,  method=RequestMethod.GET )
+	public List&lt;LookupDTO&gt; getLookUp( @PathVariable(&quot;lookupType&quot;) String lookupType ) {
+<span class="fc" id="L194">		logger.debug(&quot;Lookup type: &quot;+lookupType);</span>
+<span class="fc" id="L195">		return utilService.getLookUp(lookupType);</span>
+	}
+	
+	/**
+	 * getNotifications fetches the notifications from db
+	 * against a userId
+	 * 
+	 * @param notification
+	 * @return
+	 */
+	@Operation(summary = &quot;Get notifications&quot;, description = &quot;Get notifications&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/notifications/{userId}&quot;,  method=RequestMethod.GET )
+	public List&lt;NotificationDTO&gt; getNotifications( @PathVariable int userId ) {
+<span class="fc" id="L208">		List&lt;NotificationDTO&gt; notifications = utilService.getNotifications(userId);</span>
+<span class="fc" id="L209">		logger.debug(&quot;User Id &quot;+userId+ &quot; has &quot;+notifications.size()+ &quot; notifications.&quot;);</span>
+<span class="fc" id="L210">		return notifications;</span>
+	}
+
+	/**
+	 * sendEmailUsingTemplate is intended to send the Email based on the meta
+	 * data specified in the Request Body using template
+	 * 
+	 * @param email
+	 * 	&lt;p&gt;The DTO encapsulating Email meta data.&lt;/p&gt;
+	 * @return
+	 * 	&lt;p&gt;The Status of Email Sending.&lt;/p&gt;
+	 * 
+	 */
+	@Operation(summary = &quot;Sends the email using template&quot;, description = &quot;Sends the email using template&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/send-email-using-template&quot;,  method=RequestMethod.POST )
+	public ResponseEntity&lt;String&gt; sendEmailUsingTemplate( @RequestBody EmailDTO email ) {
+<span class="fc" id="L226">		logger.debug(&quot;Email details = &quot;+email);</span>
+		try {
+<span class="fc" id="L228">			mailService.sendEmailUsingTemplate(email);</span>
+<span class="nc" id="L229">		} catch (MessagingException e) {</span>
+<span class="nc" id="L230">			logger.error(e.getMessage());</span>
+<span class="nc" id="L231">			throw new PainscriptBusinessException(&quot;ERR_001&quot;, e.getMessage());</span>
+<span class="fc" id="L232">		}</span>
+<span class="fc" id="L233">		return new ResponseEntity&lt;&gt;(&quot;Email Sent&quot;, HttpStatus.OK);</span>
+	}
+	
+	/**
+	 * listAllActiveVersions is used to get list of all active versions of app
+	 * 
+	 * @param appType
+	 * @return response
+	 */
+	@Operation(summary = &quot;Get list of all active versions of painscript app&quot;, description = &quot;Get list of all active versions of painscript app.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/active-versions/{appType}&quot;,  method=RequestMethod.GET )
+	public Map&lt;String,Object&gt; listAllActiveVersions(@PathVariable String appType) {
+<span class="fc" id="L245">		Map&lt;String,Object&gt; response = new HashMap&lt;String, Object&gt;();</span>
+<span class="fc" id="L246">		List&lt;AppInfoDTO&gt; versions = utilService.getAllVersions(appType,ACTIVE);</span>
+<span class="fc" id="L247">		logger.debug(appType+ &quot; has &quot;+ versions.size() + &quot; active versions.&quot;);</span>
+<span class="fc" id="L248">		response.put(&quot;versions&quot;, versions);</span>
+<span class="fc" id="L249">		Map&lt;String,Object&gt; config = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L250">		config.put(&quot;androidAppUrl&quot;, androidAppUrl);</span>
+<span class="fc" id="L251">		config.put(&quot;iosAppUrl&quot;, iosAppUrl);</span>
+<span class="fc" id="L252">		response.put(&quot;config&quot;, config);</span>
+<span class="fc" id="L253">		return response;</span>
+	}
+	
+	/**
+	 * addNewRelease is used to add a new version of app
+	 * @param appInfoRequest
+	 * &lt;p&gt;The DTO encapsulating appInfoRequest data.&lt;/p&gt;
+	 * @return status
+	 */
+	@Operation(summary = &quot;Adds a new version of app&quot;, description = &quot;Adds a new version of app.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/release&quot;,  method=RequestMethod.POST )
+	public StatusDTO addNewRelease(@RequestBody AppInfoDTO appInfoRequest) {
+<span class="fc" id="L265">		appInfoRequest.setId(null);</span>
+<span class="fc" id="L266">		logger.debug(&quot;Adding new release: &quot;+appInfoRequest);</span>
+<span class="fc" id="L267">		utilService.saveNewVersion(appInfoRequest);</span>
+<span class="fc" id="L268">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, &quot;Submitted Successfully.&quot;);</span>
+<span class="fc" id="L269">		return status;</span>
+	}
+	
+	/**
+	 * updateRelease is used to update version of app
+	 * @param id
+	 * @param appInfoRequest
+	 * &lt;p&gt;The DTO encapsulating appInfoRequest data.&lt;/p&gt;
+	 * @return status
+	 */
+	@Operation(summary = &quot;Updates version of app&quot;, description = &quot;Updates version of app.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping( value=&quot;/release/{id}&quot;,  method=RequestMethod.PUT )
+	public StatusDTO updateRelease(@PathVariable Integer id, @RequestBody AppInfoDTO appInfoRequest) {
+<span class="fc" id="L282">		logger.debug(&quot;Id: &quot;+id);</span>
+<span class="fc" id="L283">		appInfoRequest.setId(id);</span>
+<span class="fc" id="L284">		logger.debug(&quot;Updating Release: &quot;+appInfoRequest);</span>
+<span class="fc" id="L285">		utilService.saveNewVersion(appInfoRequest);</span>
+<span class="fc" id="L286">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, &quot;Updated Successfully.&quot;);</span>
+<span class="fc" id="L287">		return status;</span>
+	}
+	
+	/**
+	 * clearCache clears the cache
+	 * @param name
+	 * &lt;p&gt;Cache Name&lt;/p&gt;
+	 */
+	@Operation(summary = &quot;Clears the cache.&quot;, description = &quot;Clears the cache.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping(value = &quot;/cache-clear&quot;, method=RequestMethod.GET)
+	public String clearCache(){
+<span class="fc" id="L298">		utilService.clearCache();</span>
+<span class="fc" id="L299">		logger.debug(&quot;cache cleared&quot;);</span>
+<span class="fc" id="L300">		return &quot;cache cleared&quot;;</span>
+	}
+	
+	/**
+	 * getSpecialties retrieves list of all specialties
+	 * @return specialties
+	 */
+	@Operation(summary = &quot;Retrieves list of all specialties.&quot;, description = &quot;Retrieves list of all specialties.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping(value = &quot;/specialities&quot;, method=RequestMethod.GET)
+	public List&lt;SpecialityDTO&gt; getSpecialties(){
+<span class="fc" id="L310">		List&lt;SpecialityDTO&gt; specialties = utilService.getSpecialties(ACTIVE);</span>
+<span class="fc" id="L311">		return 	specialties;</span>
+	}
+	
+	/**
+	 * getSpecialtiesByRole retrieves list of all specialties by roleId
+	 * @param roleId
+	 * @return specialties
+	 */
+	@Operation(summary = &quot;Retrieves list of all specialties by roleId.&quot;, description = &quot;Retrieves list of all specialties by roleId.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping(value = &quot;/specialities-by-role/{roleId}&quot;, method=RequestMethod.GET)
+	public List&lt;SpecialityDTO&gt; getSpecialtiesByRole(@PathVariable Integer roleId){
+<span class="fc" id="L322">		List&lt;SpecialityDTO&gt; specialties = utilService.getSpecialtiesByRole(roleId,ACTIVE);</span>
+<span class="fc" id="L323">		logger.debug(&quot;Role id &quot;+roleId+ &quot; has &quot;+specialties.size() + &quot; specialities.&quot;);</span>
+<span class="fc" id="L324">		return 	specialties;</span>
+	}
+	
+	/**
+	 * addSpeciality saves a new specialty.
+	 * @param specialityDTO
+	 * @return status
+	 */
+	@Operation(summary = &quot;Adds a new speciality.&quot;, description = &quot;Adds a new speciality.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping(value = &quot;/speciality&quot;, method=RequestMethod.POST)
+	public StatusDTO addSpeciality(@RequestBody SpecialityDTO specialityDTO){
+<span class="fc" id="L335">		logger.debug(&quot;Adding Speciality: &quot;+specialityDTO);</span>
+<span class="fc" id="L336">		utilService.addSpecialty(specialityDTO);</span>
+<span class="fc" id="L337">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, &quot;Successfully added new speciality.&quot;);</span>
+<span class="fc" id="L338">		return status;</span>
+	}
+	
+	/**
+	 * updateSpeciality updates an existing specialty.
+	 * @param id
+	 * @param specialityDTO
+	 *  @return status
+	 */
+	@Operation(summary = &quot;Updates an existing specialty.&quot;, description = &quot;Updates an existing specialty.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping(value = &quot;/speciality/{id}&quot;, method=RequestMethod.PUT)
+	public StatusDTO updateSpeciality(@PathVariable Integer id, @RequestBody SpecialityDTO specialityDTO){
+<span class="fc" id="L350">		logger.debug(&quot;Id: &quot;+id);</span>
+<span class="fc" id="L351">		specialityDTO.setId(id);</span>
+<span class="fc" id="L352">		logger.debug(&quot;Updating Speciality: &quot;+specialityDTO);</span>
+<span class="fc" id="L353">		utilService.updateSpeciality(specialityDTO);</span>
+<span class="fc" id="L354">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, &quot;Successfully updated speciality.&quot;);</span>
+<span class="fc" id="L355">		return status;</span>
+	}
+	
+	/**
+	 * getDisordersList retrieves list of all disorders
+	 * @param status
+	 *  @return disorders
+	 */
+	@Operation(summary = &quot;Retrieves list of all disorders.&quot;, description = &quot;Retrieves list of all disorders.&quot;, tags = { &quot;UserManagement&quot; })
+	@RequestMapping(value = &quot;/disorders/{status}&quot;, method=RequestMethod.GET)
+	public List&lt;DisorderDTO&gt; getDisordersList(@PathVariable String status){
+<span class="fc" id="L366">		List&lt;DisorderDTO&gt; disorders = utilService.getDisorders(status);</span>
+<span class="fc" id="L367">		logger.debug(&quot;There are &quot;+disorders.size()+&quot; &quot;+status+&quot; disorders.&quot;);</span>
+<span class="fc" id="L368">		return 	disorders;</span>
+	}
+	
+	/**
+	 * addDisorder saves a new disorder.
+	 * @param disorderDTO
+	 *  @return status
+	 */
+	@Operation(summary = &quot;Adds a new disorder.&quot;, description = &quot;Adds a new disorder.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping(value = &quot;/disorder&quot;, method=RequestMethod.POST)
+	public StatusDTO addDisorder(@RequestBody DisorderDTO disorderDTO){
+<span class="fc" id="L379">		logger.debug(&quot;Adding disorder: &quot;+disorderDTO);</span>
+<span class="fc" id="L380">		utilService.addDisorder(disorderDTO);</span>
+<span class="fc" id="L381">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, &quot;Successfully added new disorder.&quot;);</span>
+<span class="fc" id="L382">		return status;</span>
+	}
+	
+	/**
+	 * updateDisorder updates an existing disorder.
+	 * @param id
+	 * @param disorderDTO
+	 *  @return status
+	 */
+	@Operation(summary = &quot;Updates an existing disorder.&quot;, description = &quot;Updates an existing disorder.&quot;, tags = { &quot;UtilService&quot; })
+	@RequestMapping(value = &quot;/disorder/{id}&quot;, method=RequestMethod.PUT)
+	public StatusDTO updateDisorder(@PathVariable Integer id, @RequestBody DisorderDTO disorderDTO){
+<span class="fc" id="L394">		logger.debug(&quot;Id: &quot;+id);</span>
+<span class="fc" id="L395">		disorderDTO.setDisorderId(id);</span>
+<span class="fc" id="L396">		logger.debug(&quot;Updating disorder: &quot;+disorderDTO);</span>
+<span class="fc" id="L397">		utilService.updateDisorder(disorderDTO);</span>
+<span class="fc" id="L398">		StatusDTO status = new StatusDTO(&quot;SUC_000&quot;, &quot;Successfully updated disorder.&quot;);</span>
+<span class="fc" id="L399">		return status;</span>
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>
