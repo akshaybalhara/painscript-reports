@@ -14,16 +14,23 @@ import com.painscript.dto.UserDTO;
 @Controller
 public class PainscriptReportController {
 
-	@RequestMapping(path="/reports", method=RequestMethod.POST)
+	@RequestMapping(path="/reports", method=RequestMethod.GET)
 	String reports(@ModelAttribute("user")UserDTO user,ModelMap model) {
-		model.put("name",user.getUsername());
-		System.out.println(user.getPassword());
-		//String date = new SimpleDateFormat("ddMMyyyy").format(new Date());
-		if(user.getUsername().equals("Admin") && user.getPassword().equals("1111")) {
-			return "reports";
-		}else {
-			return "error";
-		}
+//		model.put("name",user.getUsername());
+//		String date = new SimpleDateFormat("ddMMyyyy").format(new Date());
+//		if(user.getUsername().equals("Admin") && user.getPassword().equals("1111111")) {
+//			System.out.println("hello");
+//			return "reports";
+//		}else {
+//			return "error";
+//		}
+		return "reports";
 	}
-
+	
+	@RequestMapping(path="/login", method=RequestMethod.GET)
+	String getlogin()
+	{
+		return "index";
+	}
+	
 }

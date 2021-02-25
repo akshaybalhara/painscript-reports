@@ -13,7 +13,7 @@
 <div class="login">
   <h1>Login</h1>
   <c:url value="/login" var="loginVar"/>
-    <form action="${loginVar}" method="post" modelAttribut="user">
+    <form action="${loginVar}" method="post">
       <input type="text"  placeholder="Username" required="required" name="username"/>
         <input type="password"  placeholder="Password" required="required"  name="password" />
         <sec:csrfInput/>

@@ -3,7 +3,7 @@
 <%@ page language="java" contentType="text/html; charset=ISO-8859-1"
 	pageEncoding="ISO-8859-1"%>
 <%@page isELIgnored="false"%>
-
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="ISO-8859-1">
@@ -27,9 +27,8 @@
 		</div>
 		<div class="content">
 			<ul>
-				<li><a target="_blank" href="<c:url value="/resources/apiReports.html"/>">API
-						Reports</a></li>
-				<li><a href="#">Web app Reports</a></li>
+				<li><a href="<c:url value="/resources/apiReports.html"/>" target="_blank">API Reports</a></li>
+				<li><a href="/#">Web app Reports</a></li>
 			</ul>
 		</div>
 	</div>
