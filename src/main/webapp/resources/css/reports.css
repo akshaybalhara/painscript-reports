@@ -43,6 +43,12 @@ body {
 	letter-spacing: 2px;
 }
 
+form{
+	float: left;
+	cursor: pointer;
+}
+
+
 .icon {
 	width: 25px;
 	border-radius: 50px;

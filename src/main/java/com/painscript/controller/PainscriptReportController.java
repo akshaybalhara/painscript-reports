@@ -30,7 +30,7 @@ public class PainscriptReportController {
 	@RequestMapping(path="/login", method=RequestMethod.GET)
 	String getlogin()
 	{
-		return "index";
+		return "login";
 	}
 	
 }
