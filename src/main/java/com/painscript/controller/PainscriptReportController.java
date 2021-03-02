@@ -16,14 +16,6 @@ public class PainscriptReportController {
 
 	@RequestMapping(path="/reports", method=RequestMethod.GET)
 	String reports(@ModelAttribute("user")UserDTO user,ModelMap model) {
-//		model.put("name",user.getUsername());
-//		String date = new SimpleDateFormat("ddMMyyyy").format(new Date());
-//		if(user.getUsername().equals("Admin") && user.getPassword().equals("1111111")) {
-//			System.out.println("hello");
-//			return "reports";
-//		}else {
-//			return "error";
-//		}
 		return "reports";
 	}
 	

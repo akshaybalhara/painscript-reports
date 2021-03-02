@@ -55,6 +55,13 @@
 			<artifactId>spring-security-taglibs</artifactId>
 			<version>4.2.17.RELEASE</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.springframework/spring-context-support -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-support</artifactId>
+			<version>4.3.30.RELEASE</version>
+		</dependency>
+
 
 
 	</dependencies>
