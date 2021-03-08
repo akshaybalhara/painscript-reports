@@ -18,7 +18,7 @@
         <input type="password"  placeholder="Password" required="required"  name="password" />
         <sec:csrfInput/>
         <c:if test="${param.error !=null}">
-        	<p>Invalid user credentials</p>
+        	<center><p>Invalid user credentials</p></center>
         </c:if>
         <button type="submit" class="btn btn-primary btn-block btn-large" id="submit" value="LOGIN">Log In</button>
     </form>

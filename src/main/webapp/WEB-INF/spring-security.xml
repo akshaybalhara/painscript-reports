@@ -16,17 +16,23 @@
 	<http auto-config="true">
 		<intercept-url pattern="/reports"
 			access="hasRole('ROLE_USER')" />
-		<intercept-url pattern="/resources/apiReports.html"
+		<intercept-url pattern="/resources/Api/apiReports.html"
 			access="hasRole('ROLE_USER')" />
-		<intercept-url pattern="/resources/audit/**"
+		<intercept-url pattern="/resources/Api/audit/**"
 			access="hasRole('ROLE_USER')" />
-		<intercept-url pattern="/resources/auth/**"
+		<intercept-url pattern="/resources/Api/auth/**"
 			access="hasRole('ROLE_USER')" />
-		<intercept-url pattern="/resources/user-management/**"
+		<intercept-url pattern="/resources/Api/user-management/**"
 			access="hasRole('ROLE_USER')" />
-		<intercept-url pattern="/resources/manage-survey/**"
+		<intercept-url pattern="/resources/Api/manage-survey/**"
 			access="hasRole('ROLE_USER')" />
-		<intercept-url pattern="/resources/util/**"
+		<intercept-url pattern="/resources/Api/util/**"
+			access="hasRole('ROLE_USER')" />
+			<intercept-url pattern="/resources/Web-app/admin/**"
+			access="hasRole('ROLE_USER')" />
+			<intercept-url pattern="/resources/Web-app/physician/**"
+			access="hasRole('ROLE_USER')" />
+			<intercept-url pattern="/resources/Web-app/siteAdmin/**"
 			access="hasRole('ROLE_USER')" />
 		<form-login login-page="/login"
 			login-processing-url="/login" username-parameter="username"
@@ -35,10 +41,7 @@
 		<logout logout-url="/logout" logout-success-url="/" />
 	</http>
 	<authentication-manager>
-		<authentication-provider ref="customAuthentication">  <!-- ref="customAuthentication" -->
-<!-- 			<user-service> -->
-<!-- 				<user name="Admin" password="pass" authorities="ROLE_USER" /> -->
-<!-- 			</user-service> -->
+		<authentication-provider ref="customAuthentication">  
 		</authentication-provider>
 	</authentication-manager>
 	
