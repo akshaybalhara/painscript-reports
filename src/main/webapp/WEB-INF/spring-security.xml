@@ -9,9 +9,10 @@
     http://www.springframework.org/schema/security  
     http://www.springframework.org/schema/security/spring-security.xsd
     http://www.springframework.org/schema/context  
-    http://www.springframework.org/schema/context/spring-context.xsd" >
-	
-	<context:component-scan base-package="com.painscript.configuration" />
+    http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<context:component-scan
+		base-package="com.painscript.configuration" />
 
 	<http auto-config="true">
 		<intercept-url pattern="/reports"
@@ -22,17 +23,21 @@
 			access="hasRole('ROLE_USER')" />
 		<intercept-url pattern="/resources/Api/auth/**"
 			access="hasRole('ROLE_USER')" />
-		<intercept-url pattern="/resources/Api/user-management/**"
+		<intercept-url
+			pattern="/resources/Api/user-management/**"
 			access="hasRole('ROLE_USER')" />
 		<intercept-url pattern="/resources/Api/manage-survey/**"
 			access="hasRole('ROLE_USER')" />
 		<intercept-url pattern="/resources/Api/util/**"
 			access="hasRole('ROLE_USER')" />
-			<intercept-url pattern="/resources/Web-app/admin/**"
+		<intercept-url
+			pattern="/resources/Web-app/webReports.html"
 			access="hasRole('ROLE_USER')" />
-			<intercept-url pattern="/resources/Web-app/physician/**"
+		<intercept-url pattern="/resources/Web-app/admin/**"
 			access="hasRole('ROLE_USER')" />
-			<intercept-url pattern="/resources/Web-app/siteAdmin/**"
+		<intercept-url pattern="/resources/Web-app/physician/**"
+			access="hasRole('ROLE_USER')" />
+		<intercept-url pattern="/resources/Web-app/siteAdmin/**"
 			access="hasRole('ROLE_USER')" />
 		<form-login login-page="/login"
 			login-processing-url="/login" username-parameter="username"
@@ -41,8 +46,9 @@
 		<logout logout-url="/logout" logout-success-url="/" />
 	</http>
 	<authentication-manager>
-		<authentication-provider ref="customAuthentication">  
+		<authentication-provider
+			ref="customAuthentication">
 		</authentication-provider>
 	</authentication-manager>
-	
+
 </beans:beans>

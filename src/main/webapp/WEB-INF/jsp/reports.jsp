@@ -29,7 +29,7 @@
 		<div class="content">
 			<ul>
 				<li><a href="<c:url value="/resources/Api/apiReports.html"/>" target="_blank">API Reports</a></li>
-				<li><a href="<c:url value="/resources/Web-app/webReports.html"/>">Web app Reports</a></li>
+				<li><a href="<c:url value="/resources/Web-app/webReports.html"/>" target="_blank">Web app Reports</a></li>
 			</ul>
 		</div>
 	</div>
